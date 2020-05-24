@@ -74,6 +74,10 @@ h3 {
     transform: translate(-50%,0%);
 }
 
+#bottom-bar a {
+    color: rgb(240,240,240);
+}
+
 #rejoinbuttons button {
     display: inline-block;
     width: 49%;
