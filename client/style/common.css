@@ -1,0 +1,151 @@
+.noselect {
+    -webkit-touch-callout: none; /* iOS Safari */
+        -webkit-user-select: none; /* Safari */
+        -khtml-user-select: none; /* Konqueror HTML */
+            -moz-user-select: none; /* Firefox */
+            -ms-user-select: none; /* Internet Explorer/Edge */
+                user-select: none; /* Non-prefixed version, currently
+                                    supported by Chrome and Opera */
+}
+
+.noscroll::-webkit-scrollbar {
+    display: none;
+}
+.noscroll {z
+    -ms-overflow-style: none;
+}
+
+@font-face {
+    font-family: roboto;
+    src: url(../assets/Roboto/Roboto-Regular.ttf);
+}
+@font-face {
+    font-family: roboto-thin;
+    src: url(../assets/Roboto/Roboto-Thin.ttf);
+}
+@font-face {
+    font-family: roboto-bold;
+    src: url(../assets/Roboto/Roboto-Bold.ttf);
+}
+
+button:focus, input:focus {
+    outline: none;
+}
+
+html, body {
+    margin: 0px;
+    padding: 0px;
+    overflow: hidden;
+}
+
+h1 {
+    color: rgb(240,240,240);
+    font-family: roboto-bold;
+}
+
+h3 {
+    color: rgb(221, 221, 221);
+    font-family: roboto-thin;
+}
+
+#custom-context {
+    position: absolute;
+    height: fit-content;
+    width: 10vw;
+    top: 0px;
+    left: 0px;
+    display: none;
+    border-radius: 5px;
+    background-color: rgb(240,240,240);
+    border: 2px solid rgb(211, 211, 211);
+    z-index: 1000;
+}
+
+#custom-context.active {
+    display: inline-block;
+}
+
+.item {
+    margin: 0px;
+    list-style: none;
+    padding: 10px;
+    background-color: rgb(240,240,240);
+    text-align: center;
+}
+
+.item:hover {
+    background-color: rgb(211,211,211);
+}
+
+.dialog {
+    display: none;
+    width: fit-content;
+    height: fit-content;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    padding: 2vh;
+    border-radius: 10px;
+    background-color: rgb(55, 63, 65);
+    border: 2px solid rgb(42, 48, 49);
+    z-index: 20001;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+}
+
+.dialog.active {
+    display: block;
+}
+
+.dialog * {
+    display: block;
+    margin: 10px auto;
+    padding: 5px;
+    font-family: roboto;
+    font-size: 2vh;
+}
+
+.dialog input {
+    background-color: rgb(240,240,240);
+    border: 2px solid rgb(184, 184, 184);
+    border-radius: 3px;
+    width: 35vw;
+}
+
+.dialog p {
+    color: rgb(240,240,240);
+}
+
+.dialog button {
+    background-color: rgb(98, 98, 98);
+    border: 2px solid rgb(73, 73, 73);
+    border-radius: 3px;
+    color: rgb(240,240,240);
+    width: 100%;
+    transition: background-color 0.05s;
+}
+
+.dialog button:hover {
+    background-color: rgb(85, 85, 85);
+}
+
+#modal-back {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: none;
+    z-index: 20000;
+}
+
+#modal-back.active {
+    display: block;
+}
+
+input.invalid {
+    border-color: rgb(246, 32, 32);
+    border-width: 6px;
+}
+

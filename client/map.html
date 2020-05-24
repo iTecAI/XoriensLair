@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <title>Xorien's Lair - Map Display</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="pack/sha.js"></script>
+        <script src="pack/crc.js"></script>
+        <script src="scripts/cookies.js"></script>
+        <script>
+            function command(command, data, port, callback) {
+                var sendData = {
+                    "command":command,
+                    "kwargs":data
+                };
+                $.post(
+                    'http://' + self.location.hostname + ':' + port.toString(),
+                    sendData,
+                    callback,
+                    'json'
+                );
+            }
+        </script>
+        <script>
+            if (getCookie('uid') == '') {
+                setCookie('uid',sha256(Math.random().toString()),14);
+            }
+
+            var BrowserFingerprint = getCookie('uid');
+            var params = new URLSearchParams(document.location.search.substring(1));
+            var previousData = {'null':null};
+
+            function scmd(cmd,args,callback) {
+                command('scmd',{
+                    'sid':params.get('id'),
+                    'fingerprint':BrowserFingerprint,
+                    'command':cmd,
+                    'args':args.join('|')
+                },1023,callback);
+            }
+
+            var iconIndex = {
+                'Artificer':'Artificer.png',
+                'Barbarian':'Barbarian.png',
+                'Bard':'Bard.png',
+                'Cleric':'Cleric.png',
+                'Druid':'Druid.png',
+                'Fighter':'Fighter.png',
+                'Monk':'Monk.png',
+                'Mystic':'Mystic.png',
+                'Paladin':'Paladin.png',
+                'Ranger':'Ranger.png',
+                'Rogue':'Rogue.png',
+                'Sorcerer':'Sorcerer.png',
+                'Warlock':'Warlock.png',
+                'Wizard':'Wizard.png',
+                'Dice':'Unknown.png',
+                'Dragon':'Dragon.png',
+                'Treasure':'Treasure.png'
+            };
+
+            var sizes = {
+                'Tiny':2.5,
+                'Small':5,
+                'Medium':5,
+                'Large':10,
+                'Huge':15,
+                'Gargantuan':20
+            };
+
+            function doMapImageClick(event) {
+                var e = event.target;
+                if ($(e).hasClass('selected')) {
+                    $(e).toggleClass('selected',false);
+                } else {
+                    $('#maps-area img').toggleClass('selected',false);
+                    $(e).toggleClass('selected',true);
+                }
+
+                if ($('#maps-area img').hasClass('selected')) {
+                    $('#map-actions').toggleClass('active',true);
+                } else {
+                    $('#map-actions').toggleClass('active',false);
+                }
+            }
+
+            function saveAs(uri, filename) { // Code from https://stackoverflow.com/a/25715985
+                var link = document.createElement('a');
+                if (typeof link.download === 'string') {
+                    link.href = uri;
+                    link.download = filename;
+
+                    //Firefox requires the link to be in the body
+                    document.body.appendChild(link);
+                    
+                    //simulate click
+                    link.click();
+
+                    //remove the link when done
+                    document.body.removeChild(link);
+                } else {
+                    window.open(uri);
+                }
+                }
+
+            function refresh(data,override) { // Run this routine every .4s
+                if ((JSON.stringify(data) != JSON.stringify(previousData) && data.code == 200)) {
+                    if (Object.keys(data).length <= 1) {
+                        data = previousData;
+                    }
+                    previousData = data;
+
+                    // Update player listing
+                    var elbox = document.getElementById('user-area');
+                    elbox.innerHTML = '';
+
+                    var keys = Object.keys(previousData.users);
+
+                    for (var k=0;k<keys.length;k++) {
+                        var newElement = document.createElement('div');
+                        newElement.id = 'user-'+previousData.users[keys[k]].fingerprint;
+                        newElement.innerText = previousData.users[keys[k]].name;
+                        newElement.className = 'noselect'
+                        if (previousData.users[keys[k]].type == 'dm') {
+                            newElement.style = 'border-left: 4px solid rgb(255, 47, 10);';
+                        }
+                        elbox.appendChild(newElement);
+                    }
+
+                    if (previousData.users[BrowserFingerprint].type == 'dm') {
+                        $('#player-buttons').css('display','none');
+                        $('#dm-buttons').css('display','block');
+                    } else {
+                        $('#dm-buttons').css('display','none');
+                        $('#player-buttons').css('display','block');
+                    }
+                    $('#session-name').text('Session Name: '+previousData.name);
+
+                    var mapArea = document.getElementById('maps-area');
+                    mapArea.innerHTML = '';
+                    for (var m=0;m<previousData.session.maps.length;m++) {
+                        var el = document.createElement('img');
+                        el.src = previousData.session.maps[m].image;
+                        el.title = 'Dimensions: '.concat(
+                            previousData.session.maps[m].grid_data.rows.toString(),
+                            ' x ',
+                            previousData.session.maps[m].grid_data.columns.toString(),
+                            ' | Grid Size: ',
+                            previousData.session.maps[m].grid_data.size.toString(),
+                            ' ft.'
+                        );
+                        el.id = previousData.session.maps[m].id;
+                        el.setAttribute('data',JSON.stringify(previousData.session.maps[m]));
+                        el.onclick = doMapImageClick;
+                        mapArea.appendChild(el);
+                    }
+                }
+            }
+            
+            $(document).ready(function(){
+                // Page setup
+                $('#share-link').text(document.location); // Set the share link
+                
+                var iconKeys = Object.keys(iconIndex); // Place icons in the icons bar
+                for (var i=0;i<iconKeys.length;i++) {
+                    var nel = document.createElement('div');
+                    var iel = document.createElement('img');
+                    iel.src = 'assets/icons/'+iconIndex[iconKeys[i]];
+                    nel.appendChild(iel);
+                    nel.title = iconKeys[i];
+                    document.getElementById('icon-area').appendChild(nel);
+                }
+                
+
+                // Fingerprint setup
+                
+                setTimeout(function () { // Ready fingerprint generation
+                    console.log('FINGERPRINT: '+BrowserFingerprint);
+                    command('checkuser',{'fingerprint':BrowserFingerprint},1023,function(data){
+                        if (!data['found']) {
+                            command('gsi',{'sid':params.get('id')},1023,function(data){
+                                if (data['code'] == 200) {
+                                    if (data['hasPassword']) {
+                                        command('joinsession',{
+                                            'name':prompt('Enter the name you want to display.'),
+                                            'id':params.get('id'),
+                                            'password':prompt('Enter password to join '+data['name']+'.'),
+                                            'fingerprint':BrowserFingerprint
+                                        },1023,function(data){
+                                            if (Object.keys(data).includes('code')) {
+                                                if (data['code'] == 403) {
+                                                    alert('Password is incorrect.');
+                                                    window.location = 'index.html';
+                                                } else {
+                                                    alert('That server does not exist. Please make sure you copied your join link correctly.')
+                                                }
+                                            } else {
+                                                alert('Success!');
+                                            }
+                                        });
+                                    } else {
+                                        command('joinsession',{
+                                            'name':prompt('Enter the name you want to display.'),
+                                            'id':params.get('id'),
+                                            'password':'',
+                                            'fingerprint':BrowserFingerprint
+                                        },1023,function(data){
+                                            if (Object.keys(data).includes('code')) {
+                                                if (data['code'] == 403) {
+                                                    alert('Password is incorrect.');
+                                                    window.location = 'index.html';
+                                                } else {
+                                                    alert('That server does not exist. Please make sure you copied your join link correctly.')
+                                                }
+                                            } else {
+                                                alert('Success!');
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    alert('Cannot find that session.');
+                                }
+                            });
+                        } else {
+                            console.log(data);
+                        }
+                    });
+                }, 2000);
+                
+                // Context menu manager
+                window.addEventListener("contextmenu", e => {
+                    if (event.target.id == 'display-area') {
+                        e.preventDefault();
+                        $('#custom-context').css({
+                            'top':e.pageY,
+                            'left':e.pageX
+                        });
+                        $('#custom-context').toggleClass('active',true);
+                    }
+                });
+                window.addEventListener("click", e => {
+                    $('#custom-context').toggleClass('active',false);
+                });
+
+                // Button functions
+                $('#save-session').click(function(){ // Save the current session to a file
+                    command('scmd',{
+                        'sid':params.get('id'),
+                        'fingerprint':BrowserFingerprint,
+                        'command':'save',
+                        'args':0
+                    },1023,function(data){
+                        var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data['save']));
+                        saveAs(dataStr,'session.json');
+                    });
+                });
+
+                $('#share-link').click(function() { // Copying the share link
+                    var id = 'share-link';
+                    var el = document.getElementById(id);
+                    var range = document.createRange();
+                    range.selectNodeContents(el);
+                    var sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    document.execCommand('copy');
+                    $(this).attr('data-tooltip','Copied!');
+                    window.setTimeout(function(){$('#share-link').attr('data-tooltip','Click to Copy')},2000);
+                });
+
+                $('#submit-nick').click(function(){ // Change player nickname
+                    if ($('#change-nick-input').val() == '') {
+                        $('#change-nick-input').toggleClass('invalid',true);
+                        return;
+                    } else {
+                        $('#change-nick-input').toggleClass('invalid',false);
+                    }
+                    $('.active').toggleClass('active',false);
+                    $('.invalid').toggleClass('invalid',false);
+                    command('editname',{
+                        'sid':params.get('id'),
+                        'fingerprint':BrowserFingerprint,
+                        'name':$('#change-nick-input').val()
+                    },1023,function(data){
+                        if (data['code'] == 404) {
+                            alert('Error: '+data['reason']);
+                        }
+                    });
+                });
+
+                $('#btn-inc-size').click(function(){ // Increase icon size category
+                    var keys = Object.keys(sizes);
+                    if ($('#size-indicator').attr('name') != 'Gargantuan') {
+                        var nextSize = keys[keys.indexOf($('#size-indicator').attr('name'))+1];
+                        $('#size-indicator').attr('name',nextSize);
+                        if (nextSize.length > 6) {
+                            $('#size-indicator').text(nextSize.substring(0,5)+'.');
+                        } else {
+                            $('#size-indicator').text(nextSize);
+                        }
+                    }
+                });
+                $('#btn-dec-size').click(function(){ // Decrease icon size category
+                    var keys = Object.keys(sizes);
+                    if ($('#size-indicator').attr('name') != 'Tiny') {
+                        var nextSize = keys[keys.indexOf($('#size-indicator').attr('name'))-1];
+                        $('#size-indicator').attr('name',nextSize);
+                        if (nextSize.length > 6) {
+                            $('#size-indicator').text(nextSize.substring(0,5)+'.');
+                        } else {
+                            $('#size-indicator').text(nextSize);
+                        }
+                    }
+                });
+
+                $('#settings-submit').click(function(){ // Finish modifying settings
+                    if ($('#session-name-set').val() == '') {
+                        $('#session-name-set').toggleClass('invalid',true);
+                        return;
+                    } else {
+                        $('#session-name-set').toggleClass('invalid',false);
+                    }
+                    $('.active').toggleClass('active',false);
+                    $('.invalid').toggleClass('invalid',false);
+                    command('modsession',{
+                        'sid':params.get('id'),
+                        'fingerprint':BrowserFingerprint,
+                        'newname':$('#session-name-set').val(),
+                        'newpass':$('#session-psw-set').val()
+                    },1023,function(data){
+                        if (data.code != 200) {
+                            alert(data.reason);
+                        }
+                    });
+                });
+                $('#session-reset').click(function(){ // Purge all session info (maps & characters)
+                    if (confirm('Are you sure? This action is irreversible unless you have saved a copy of this session.')) {
+                        command('purge',{
+                            'sid':params.get('id'),
+                            'fingerprint':BrowserFingerprint
+                        },1023,function(data){
+                            if (data.code != 200) {
+                                alert(data.reason);
+                            }
+                        })
+                    }
+                });
+
+                $('#set-sheet-input').keyup(function(){ // Update iframe to display sheet.
+                    $('#sheet-frame').attr('src',$('#set-sheet-input').val());
+                    if ($('#set-sheet-input').val().includes('spreadsheets')) {
+                        $('#sheet-frame').show(0);
+                    } else {
+                        $('#sheet-frame').hide(0);
+                    }
+                });
+                $('#submit-sheet').click(function(){ // Submit sheet
+                    if ($('#set-sheet-input').val() == '') {
+                        $('#set-sheet-input').toggleClass('invalid',true);
+                        return;
+                    } else {
+                        $('#set-sheet-input').toggleClass('invalid',false);
+                    }
+                    $('.active').toggleClass('active',false);
+                    $('.invalid').toggleClass('invalid',false);
+                    command('scmd',{
+                        'sid':params.get('id'),
+                        'fingerprint':BrowserFingerprint,
+                        'command':'load_sheet',
+                        'args':$('#set-sheet-input').val()
+                    },1023,function(data){
+                        if (data['code'] == 200) {
+                            alert('Sheet loaded.');
+                        } else {
+                            alert('Error: '+data['reason']);
+                        }
+                    });
+                });
+
+                // Loading maps
+                $('#load-map').click(function(){$('#load-map-file').click()});
+                $('#load-map-file').change(function(){
+                    var file = document.getElementById('load-map-file').files[0];
+                    var reader = new FileReader();
+                    reader.addEventListener("load", function () {
+                        if ($('#map-rows').val() == '') {
+                            var rows = 20;
+                        } else {
+                            var rows = $('#map-rows').val();
+                        }
+                        if ($('#map-cols').val() == '') {
+                            var cols = 20;
+                        } else {
+                            var cols = $('#map-cols').val();
+                        }
+                        if ($('#grid-size-inp').val() == '') {
+                            var gs = 5;
+                        } else {
+                            var gs = $('#grid-size-inp').val();
+                        }
+
+                        scmd('load_map',[reader.result,rows,cols,gs],refresh);
+                    }, false);
+                
+                    if (file) {
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                // Map Buttons
+                $('#remove-map').click(function(){
+                    scmd('delete_map',[$('#maps-area .selected').attr('id')],refresh);
+                    $('#map-actions').toggleClass('active',false);
+                });
+                $('#place-map').click(function(){
+                    var mapData = JSON.parse($('#maps-area .selected').attr('data'));
+                    scmd('modify_map',[
+                    $('#maps-area .selected').attr('id'),
+                    mapData.grid_data.rows,
+                    mapData.grid_data.columns,
+                    mapData.grid_data.size,
+                    0,0,true
+                    ],refresh);
+                    $('#map-actions').toggleClass('active',false);
+                });
+                $('#mod-map').click(function(){
+                    var mapData = JSON.parse($('#maps-area .selected').attr('data'));
+
+                    if ($('#map-rows').val() == '') {
+                        var rows = mapData.grid_data.rows;
+                    } else {
+                        var rows = $('#map-rows').val();
+                    }
+                    if ($('#map-cols').val() == '') {
+                        var cols = mapData.grid_data.columns;
+                    } else {
+                        var cols = $('#map-cols').val();
+                    }
+                    if ($('#grid-size-inp').val() == '') {
+                        var gs = mapData.grid_data.size;
+                    } else {
+                        var gs = $('#grid-size-inp').val();
+                    }
+
+                    scmd('modify_map',[
+                    $('#maps-area .selected').attr('id'),
+                    rows,
+                    cols,
+                    gs,
+                    mapData.position[0],
+                    mapData.position[1],
+                    mapData.active
+                    ],refresh);
+                    $('#map-actions').toggleClass('active',false);
+                });
+
+
+
+                // Refresh Loop
+                window.setInterval(function(){
+                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                },400);
+
+                // Button Cosmetics
+                $('#modal-back').click(function(){$('.active').toggleClass('active',false);$('.invalid').toggleClass('invalid',false);});
+                $('#edit-name').click(function(){
+                    $('#modal-back').toggleClass('active',true);
+                    $('#change-name-dialog').toggleClass('active',true);
+                });
+                $('#set-sheet').click(function(){
+                    $('#modal-back').toggleClass('active',true);
+                    $('#set-sheet-dialog').toggleClass('active',true);
+                    $('#set-sheet-input').val('');
+                    $('#sheet-frame').hide(0);
+                });
+                $('#settings').click(function(){
+                    $('#modal-back').toggleClass('active',true);
+                    $('#session-name-set').val(previousData.name);
+                    $('#settings-menu').toggleClass('active',true);
+                });
+                $('#manage-maps').click(function(){
+                    $('#modal-back').toggleClass('active',true);
+                    $('#manage-maps-menu').toggleClass('active',true);
+                    $('#maps-area img').toggleClass('selected',false);
+                    refresh();
+                });
+            });
+            
+        </script>
+
+        <link rel="stylesheet" type="text/css" href="style/common.css">
+        <link rel="stylesheet" type="text/css" href="style/tooltips.css">
+        <link rel="stylesheet" type="text/css" href="style/map.css">
+    </head>
+    <body>
+        <div id="modal-back"></div>
+        <iframe id="downloader" style="display:none;"></iframe>
+        <div id='custom-context'>
+        </div>
+
+        <div id='top-bar'>
+            <h3 id='session-name'>Session Name: NULL</h3>
+            <h3>Share Link</h3>
+            <div id='share-link' data-tooltip='Click to Copy' data-tooltip-location="bottom">NULL</div>
+        </div>
+        <div id='users-bar'>
+            <div id='user-area'></div>
+            <div class='user-buttons' id='player-buttons'>
+                <button id='edit-name' data-tooltip='Edit Player Name' data-tooltip-location="right"><img src="assets/editname.png"></button>
+                <button id='set-sheet' data-tooltip='Import Sheet' data-tooltip-location="right"><img src="assets/sheet.png"></button>
+                <button id='set-icon' data-tooltip='Set Player Icon' data-tooltip-location="right"><img src="assets/avatar.png"></button>
+            </div>
+            <div class='user-buttons' id='dm-buttons'>
+                <button id='save-session' data-tooltip='Save Session' data-tooltip-location="right"><img src="assets/save.png"></button>
+                <button id='manage-maps' data-tooltip='Manage Maps' data-tooltip-location="right"><img src="assets/map.png"></button>
+                <input id='load-map-file' style='display: none;' type="file">
+                <button id='settings' data-tooltip='Settings' data-tooltip-location="right"><img src="assets/settings.png"></button>
+            </div>
+        </div>
+        <div id='icons-bar' class='noscroll'>
+            <div id='icon-area' class='noscroll'></div>
+            <div id='icon-buttons'>
+                <button id='btn-inc-size'>+</button>
+                <p class='noselect' data-tooltip="Icon Size" data-tooltip-location="left" name='Medium' id='size-indicator'>Medium</p>
+                <button id='btn-dec-size'>-</button>
+            </div>
+        </div>
+        
+        <div id='display-area'></div>
+
+        <div id='icon-attribution' class='noscroll'>
+            <img src='assets/uparrow.png' width="32px" height="32px">
+            <p>Nickname Icon: <a href="https://www.flaticon.com/authors/bqlqn" title="bqlqn">bqlqn</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
+            <p>Up Arrow Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Sheet Icon: <a href="https://creativemarket.com/Becris" title="Becris">Becris</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>User Icon: <a href="http://www.freepik.com/" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Class Icons: <a href="https://www.enworld.org/threads/class-icons.517189/" title="EN WORLD">EN WORLD</a></p>
+            <p>Save Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Map Icon: <a href="https://creativemarket.com/Becris" title="Becris">Becris</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Settings Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Dragon Icon: <a href="https://www.flaticon.com/authors/icongeek26" title="Icongeek26">Icongeek26</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Treasure Chest Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Trash Can Icon: <a href="https://www.flaticon.com/free-icon/delete_1214594" title="Kiranshastry">Kiranshastry</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Place Map Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
+        </div>
+
+        <!-- Dialogs -->
+        <div id='change-name-dialog' class='dialog'>
+            <p>Change nickname:</p>
+            <input id='change-nick-input' placeholder="Nickname" size="30">
+            <button id='submit-nick'>Change Nickname</button>
+        </div>
+
+        <div id='set-sheet-dialog' class='dialog'>
+            <p>Enter sheet URL (GSheet2 or D&D Beyond):</p>
+            <input id='set-sheet-input' placeholder="URL" size="30">
+            <iframe src='null' id='sheet-frame'><p>Entered URL does not link to a sheet.</p></iframe>
+            <button id='submit-sheet'>Set Sheet</button>
+        </div>
+
+        <!-- Large Dialogs -->
+        <div id='settings-menu' class='large-dialog'>
+            <h2>Settings</h2>
+            <div class='block'>
+                <h3>Set Session Name</h3>
+                <input id='session-name-set' placeholder="Set Name" size="30">
+            </div>
+            <div class='block'>
+                <h3>Set Session Password</h3>
+                <input id='session-psw-set' placeholder="Set Password" size="30">
+            </div>
+            <div class='block'>
+                <h3>Purge Session</h3>
+                <button id='session-reset'>Purge</button>
+            </div>
+            <button class='submit-button' id='settings-submit'>Finish</button>
+        </div>
+        <div id='manage-maps-menu' class="large-dialog">
+            <h2>Manage Maps</h2>
+            <div class='action-btns' id='map-actions'>
+                <button id='remove-map' data-tooltip="Remove Map"><img src="assets/delete.png"></button>
+                <button id='place-map' data-tooltip="Place Map"><img src="assets/place.png"></button>
+                <button id='mod-map' data-tooltip="Change Map Dimensions & Grid Size"><img src="assets/settings.png"></button>
+            </div>
+            <div class='inline-block' id='maps-area'></div>
+            <div class='inline-block' id='map-options'>
+                <h3 style="width: 20%;text-align:center;">Map Size</h3>
+                <input style="width: 33%; text-align: center;" id="map-rows" type="number" placeholder="Rows" value='20'><span style="color: rgb(239, 243, 251);width:4%;font-family:roboto;text-align: center;"> X </span><input style="width: 33%; text-align: center;" id="map-cols" type="number" placeholder="Columns" value='20'>
+                <h3 style="width: 20%;text-align:center;margin-top:2%;">Grid Size</h3>
+                <input style="width: 73%; text-align: center;" type="number" id="grid-size-inp" placeholder="Grid Size (feet)" value='5'>
+                <button style="width: 100%;margin-top: 2vh;" id='load-map'>Load New Map</button>
+            </div>
+        </div>
+    </body>
+</html>

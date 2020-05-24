@@ -1,0 +1,11 @@
+html2text
+newrelic
+discord
+cachetools
+numexpr
+pillow
+fuzzywuzzy
+simpleeval
+python-meteor
+python-Levenshtein
+bson

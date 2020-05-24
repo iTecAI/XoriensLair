@@ -1,0 +1,333 @@
+#top-bar {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100vw;
+    height: 5vh;
+    background-color: rgb(63, 58, 77);
+    box-shadow: 0px 2px 20px 2px rgb(59, 59, 59);
+    z-index: 500;
+}
+#top-bar * {
+    margin: 2.5vh 10px;
+    transform: translate(0%,-50%);
+    display: inline-block;
+}
+#share-link {
+    transform: none;
+    position: absolute;
+    background-color: rgb(121, 111, 146);
+    height: 4vh;
+    width: 50vw;
+    line-height: 4vh;
+    border-radius: 1vh;
+    text-align: center;
+    font-family: roboto;
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 0.2vh;
+    margin-top: 0.5vh;
+    color: rgb(240,240,240);
+    font-family: roboto;
+    transition: background-color 0.1s;
+}
+#share-link:hover {
+    background-color: rgb(107, 99, 129);
+}
+
+#display-area {
+    width: 91.2vw;
+    height: 95vh;
+    position: absolute;
+    left: 5vw;
+    bottom: 0px;
+    background-color: rgb(215, 220, 230);
+}
+
+#users-bar {
+    position: absolute;
+    height: 95vh;
+    width: 5vw;
+    background-color: rgb(50, 46, 61);
+    left: 0px;
+    bottom: 0px;
+    box-shadow: 2px 9px 8px 4px rgb(146, 146, 146);
+    z-index: 501;
+}
+
+#icons-bar {
+    position: absolute;
+    height: 95vh;
+    width: 3.5vw;
+    background-color: rgb(50, 46, 61);
+    right: 0px;
+    bottom: 0px;
+    z-index: 501;
+    box-shadow: -2px 9px 8px 4px rgb(146, 146, 146);
+}
+#icon-area div img {
+    width:1.8vw;
+    height:1.8vw;
+    z-index: 201;
+    margin-left: 0.35vw;
+    margin-top: 0.35vw;
+}
+#icon-area div {
+    background-color: rgb(221, 223, 235);
+    border-radius: 1.25vw;
+    width:2.5vw;
+    height:2.5vw;
+    padding: 0px;
+    margin-left: 0.5vw;
+    margin-top: 0.5vh;
+    transition: background-color 0.1s;
+    font-family: roboto;
+}
+#icon-area div:hover {
+    background-color: rgb(195, 197, 209);
+}
+#icon-area {
+    overflow-y: scroll;
+    height: 85vh;
+}
+#icon-buttons {
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    width: 3.5vw;
+    height: 10vh;
+    font-family: roboto;
+    color: rgb(221, 223, 235);
+}
+#icon-buttons p {
+    padding: auto;
+    margin: 0.25vw;
+    text-align: center;
+    font-size: 0.8vw;
+}
+#icon-buttons button {
+    width: 100%;
+    background-color: rgb(50, 46, 61);
+    border: none;
+    font-family: roboto;
+    color: rgb(221, 223, 235);
+    padding: 5px 0px 5px 0px;
+    font-size: 14pt;
+    transition: background-color 0.1s;
+}
+#icon-buttons button:hover {
+    background-color: rgb(42, 38, 51);
+}
+
+.user-buttons {
+    position: absolute;
+    height: 15vh;
+    width: 5vw;
+    bottom: 0px;
+    left: 0px;
+}
+
+.user-buttons button {
+    width: 5vw;
+    height: 5vh;
+    margin-left: 0vw;
+    margin-top: 0vh;
+    border: 0px;
+    background-color: rgb(50, 46, 61);
+    border-radius: 0px;
+    transition: background-color 0.1s, width 0.1s, border-radius 0.1s;
+}
+.user-buttons button:hover {
+    background-color: rgb(40, 37, 49);
+    width: 5.3vw;
+    border-radius: 0 4px 4px 0;
+}
+.user-buttons button:last-child:hover {
+    background-color: rgb(40, 37, 49);
+    width: 5.3vw;
+    border-radius: 0 4px 0 0;
+}
+.user-buttons button img {
+    width: 1.8vw;
+    height: 1.8vw;
+}
+
+#user-area {
+    font-family: roboto;
+    text-align: center;
+    height: 80vh;
+}
+#user-area div {
+    font-family:roboto;
+    text-align:center;
+    padding-top:1vh;
+    padding-bottom:1vh;
+    width: 5vw;
+    background-color: rgb(50, 46, 61);
+    border-radius: 0px;
+    transition: background-color 0.1s, width 0.1s, border-radius 0.1s;
+    box-sizing: border-box;
+    color: rgb(242, 242, 242);
+    font-size: 1vw;
+}
+#user-area div:hover, #user-area div:focus {
+    background-color: rgb(40, 37, 49);
+    width: 5.3vw;
+    border-radius: 0 4px 4px 0;
+}
+
+#icon-attribution {
+    position: absolute;
+    bottom: 0px;
+    right: 10vw;
+    width: 15vw;
+    background-color: rgb(63, 58, 77);
+    border-radius: 10px 10px 0 0;
+    height: 3vh;
+    overflow: hidden;
+    transition: height 0.2s;
+    font-family: roboto;
+    overflow-y: hidden;
+}
+#icon-attribution img {
+    margin-left: 50%;
+    transform: translate(-50%,0%);
+}
+#icon-attribution p {
+    text-align: center;
+    color:rgb(215, 220, 230);
+}
+#icon-attribution p * {
+    text-align: center;
+    color:rgb(215, 220, 230);
+}
+#icon-attribution:hover {
+    height: 49vh;
+    overflow-y: auto;
+}
+
+.large-dialog {
+    position: absolute;
+    width: 80vw;
+    height: fit-content;
+    top: 50%;
+    left: 10vw;
+    transform: translate(0px,-50%);
+    background-color: rgb(50, 46, 61);
+    border: 4px solid rgb(40, 37, 49);
+    border-radius: 10px;
+    z-index: 20001;
+    padding: 2vh;
+    box-sizing: border-box;
+    box-shadow: 0px 0px 4px 2px rgb(120,120,120);
+    display: none;
+}
+.large-dialog.active {
+    display: block;
+}
+.large-dialog h2 {
+    margin-top: 0px;
+    font-family: roboto;
+    color: rgb(215, 220, 230);
+    text-align: center;
+    font-size: 4vh;
+}
+.large-dialog .block {
+    display: flex;
+    margin: 10px 0;
+}
+.large-dialog .block * {
+    display: inline;
+    margin: auto 0px;
+}
+.large-dialog .inline-block * {
+    display: inline-block;
+    margin: auto 0px;
+}
+.large-dialog input {
+    width: 80%;
+    padding: 1.2vh;
+    font-family: roboto;
+    font-size: 2vh;
+    border-radius: 10px;
+    border: 4px solid lightgray;
+}
+.large-dialog button {
+    width: 82%;
+    padding: 1.2vh;
+    box-sizing: border-box;
+    font-family: roboto;
+    font-size: 2.5vh;
+    border-radius: 10px;
+    border: 4px solid rgb(37, 34, 44);
+    background-color: rgb(83, 76, 100);
+    color: rgb(239, 243, 251);
+    transition: background-color 0.1s;
+}
+.large-dialog button:hover {
+    background-color: rgb(71, 66, 85);
+}
+.large-dialog h3 {
+    font-size: 2.7vh;
+    width: 20%;
+}
+.large-dialog .submit-button {
+    width: 100%;
+    background-color: rgb(0, 182, 0);
+    border: 4px solid rgb(0, 141, 0);
+    font-family: roboto-bold;
+    font-size: 3.3vh;
+    color: white;
+    padding: 0.6vh;
+}
+.large-dialog .submit-button:hover {
+    background-color: rgb(0, 165, 0);
+}
+
+#sheet-frame {
+    width: 70vw;
+    height: 50vh;
+}
+
+#maps-area {
+    max-height: 40vh;
+    overflow-y: auto;
+}
+
+#maps-area img {
+    width: auto;
+    height: 15vh;
+    margin: 4vh;
+    margin-top: 0;
+    border: 2px solid rgba(146, 146, 146,0);
+    box-sizing: border-box;
+    padding: 2px;
+}
+
+#maps-area img:hover {
+    border: 2px solid rgb(146, 146, 146);
+}
+
+#maps-area img.selected {
+    border: 2px solid rgb(189, 189, 189);
+}
+
+#map-actions {
+    display: none;
+    width: 100%;
+}
+#map-actions.active {
+    display: block;
+    margin-bottom: 1vh;
+}
+
+#map-actions * {
+    display: inline-block;
+    width: 33%;
+    height: 10vh;
+}
+
+#map-actions * img {
+    height: 100%;
+    width: auto;
+}
