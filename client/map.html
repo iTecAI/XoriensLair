@@ -504,7 +504,7 @@
 
                 // Zooming
                 $('#display-area').on('wheel',function(event){
-                    var topContainer = event.target.parentElement.parentElement
+                    var topContainer = event.target.parentElement.parentElement;
                     if (topContainer.classList.contains('map-container')) {
                         var Dy = event.originalEvent.deltaY;
                         var zoomMod = Number(topContainer.getAttribute('zoom'));
@@ -515,10 +515,10 @@
                         }
                         topContainer.setAttribute('zoom',limit(zoomMod,0.1,5).toString());
                         localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
+                        var dispArea = document.getElementById('display-area');
 
-
-                        var dx = (event.pageX - topContainer.clientLeft) * (zoomMod-1);
-                            dy = (event.pageY - topContainer.clientTop) * (zoomMod-1);
+                        var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
+                            dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
                         localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
 
                         refresh();
