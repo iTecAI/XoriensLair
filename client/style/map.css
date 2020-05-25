@@ -331,3 +331,7 @@
     height: 100%;
     width: auto;
 }
+
+.map-container {
+    position: absolute;
+}

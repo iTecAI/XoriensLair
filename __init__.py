@@ -91,7 +91,6 @@ class Session:
                 'columns':args[2],
                 'size':args[3]
             },
-            'position':[0,0],
             'active': False,
             'markers': [],
             'npcs': [],
@@ -108,7 +107,7 @@ class Session:
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
     
-    def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
+    def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, Active]
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['grid_data'] = {
@@ -116,8 +115,7 @@ class Session:
                     'columns':args[2],
                     'size':args[3]
                 }
-                self.maps[i]['position'] = [args[4],args[5]]
-                self.maps[i]['active'] = args[6]
+                self.maps[i]['active'] = args[4]
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
 

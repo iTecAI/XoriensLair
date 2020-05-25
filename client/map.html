@@ -28,6 +28,17 @@
             var BrowserFingerprint = getCookie('uid');
             var params = new URLSearchParams(document.location.search.substring(1));
             var previousData = {'null':null};
+            var uType = 'pc';
+
+            function limit(v,_min,_max) {
+                if (v < _min) {
+                    return _min;
+                } else if (v > _max) {
+                    return _max;
+                } else {
+                    return v
+                }
+            }
 
             function scmd(cmd,args,callback) {
                 command('scmd',{
@@ -67,6 +78,8 @@
                 'Gargantuan':20
             };
 
+            var localMapData = {};
+
             function doMapImageClick(event) {
                 var e = event.target;
                 if ($(e).hasClass('selected')) {
@@ -103,6 +116,9 @@
                 }
 
             function refresh(data,override) { // Run this routine every .4s
+                if (data == undefined) {
+                    data = {'code':200};
+                }
                 if ((JSON.stringify(data) != JSON.stringify(previousData) && data.code == 200)) {
                     if (Object.keys(data).length <= 1) {
                         data = previousData;
@@ -127,9 +143,11 @@
                     }
 
                     if (previousData.users[BrowserFingerprint].type == 'dm') {
+                        uType = 'dm';
                         $('#player-buttons').css('display','none');
                         $('#dm-buttons').css('display','block');
                     } else {
+                        uType = 'pc';
                         $('#dm-buttons').css('display','none');
                         $('#player-buttons').css('display','block');
                     }
@@ -137,6 +155,8 @@
 
                     var mapArea = document.getElementById('maps-area');
                     mapArea.innerHTML = '';
+                    var displayArea = document.getElementById('display-area');
+                    displayArea.innerHTML = '';
                     for (var m=0;m<previousData.session.maps.length;m++) {
                         var el = document.createElement('img');
                         el.src = previousData.session.maps[m].image;
@@ -149,9 +169,41 @@
                             ' ft.'
                         );
                         el.id = previousData.session.maps[m].id;
+                        if (!Object.keys(localMapData).includes(el.id)) {
+                            localMapData[el.id] = {
+                                'zoom':1.0,
+                                'pos':[0,0]
+                            };
+                        }
                         el.setAttribute('data',JSON.stringify(previousData.session.maps[m]));
                         el.onclick = doMapImageClick;
                         mapArea.appendChild(el);
+
+                        if (previousData.session.maps[m].active == 'true') {
+                            var container = document.createElement('div');
+                            
+                            container.className = 'map-container';
+                            container.id = previousData.session.maps[m].id;
+                            $(container).css({
+                                'width':(50*Number(previousData.session.maps[m].grid_data.columns*localMapData[container.id].zoom)).toString()+'px',
+                                'height':(50*Number(previousData.session.maps[m].grid_data.rows*localMapData[container.id].zoom)).toString()+'px',
+                                'top':localMapData[container.id].pos[1].toString() + 'px',
+                                'left':localMapData[container.id].pos[0].toString() + 'px'
+                            });
+                            container.setAttribute('zoom',localMapData[container.id].zoom.toString());
+                            container.setAttribute('data',JSON.stringify(previousData.session.maps[m]));
+                            var localContainer = document.createElement('div');
+                            localContainer.className = 'map-local';
+                            var mapImage = document.createElement('img');
+                            mapImage.src = previousData.session.maps[m].image;
+                            $(mapImage).css({
+                                'width':'100%',
+                                'height':'100%'
+                            });
+                            localContainer.appendChild(mapImage);
+                            container.appendChild(localContainer);
+                            displayArea.appendChild(container);
+                        }
                     }
                 }
             }
@@ -417,8 +469,7 @@
                     $('#maps-area .selected').attr('id'),
                     mapData.grid_data.rows,
                     mapData.grid_data.columns,
-                    mapData.grid_data.size,
-                    0,0,true
+                    mapData.grid_data.size,true
                     ],refresh);
                     $('#map-actions').toggleClass('active',false);
                 });
@@ -446,14 +497,33 @@
                     rows,
                     cols,
                     gs,
-                    mapData.position[0],
-                    mapData.position[1],
                     mapData.active
                     ],refresh);
                     $('#map-actions').toggleClass('active',false);
                 });
 
+                // Zooming
+                $('#display-area').on('wheel',function(event){
+                    var topContainer = event.target.parentElement.parentElement
+                    if (topContainer.classList.contains('map-container')) {
+                        var Dy = event.originalEvent.deltaY;
+                        var zoomMod = Number(topContainer.getAttribute('zoom'));
+                        if (Dy < 0) {
+                            zoomMod += 0.05;
+                        } else if (Dy > 0) {
+                            zoomMod -= 0.05;
+                        }
+                        topContainer.setAttribute('zoom',limit(zoomMod,0.1,5).toString());
+                        localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
 
+
+                        var dx = (event.pageX - topContainer.clientLeft) * (zoomMod-1);
+                            dy = (event.pageY - topContainer.clientTop) * (zoomMod-1);
+                        localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
+
+                        refresh();
+                    }
+                });
 
                 // Refresh Loop
                 window.setInterval(function(){
