@@ -1,3 +1,7 @@
+html {
+    overflow: hidden;
+}
+
 #top-bar {
     position: absolute;
     top: 0px;
@@ -7,12 +11,45 @@
     background-color: rgb(63, 58, 77);
     box-shadow: 0px 2px 20px 2px rgb(59, 59, 59);
     z-index: 500;
+    padding: none;
+    margin: none;
 }
 #top-bar * {
     margin: 2.5vh 10px;
     transform: translate(0%,-50%);
     display: inline-block;
 }
+#cursors-bar {
+    width: fit-content;
+    height: 5vh;
+    margin: none;
+    padding: none;
+    position: absolute;
+    right: 0px;
+    top: 0vh;
+    z-index: 501;
+}
+#cursors-bar button {
+    display: inline-block;
+    width: 3.5vw;
+    height: 5vh;
+    background-color: rgb(63, 58, 77);
+    border: none;
+    margin: 0px;
+    padding: 0px;
+    padding-top: 0.5vh;
+}
+#cursors-bar button:hover {
+    background-color: rgb(49, 45, 59);
+}
+#cursors-bar button img {
+    height: 3vh;
+    width: 3vh;
+    margin: 0vh;
+    padding: 0px;
+    display: inline-block;
+}
+
 #share-link {
     transform: none;
     position: absolute;
@@ -42,6 +79,7 @@
     left: 5vw;
     bottom: 0px;
     background-color: rgb(215, 220, 230);
+    overflow: hidden;
 }
 
 #users-bar {

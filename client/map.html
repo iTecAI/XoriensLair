@@ -6,6 +6,10 @@
         <script src="pack/sha.js"></script>
         <script src="pack/crc.js"></script>
         <script src="scripts/cookies.js"></script>
+        <script
+            src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
+            integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
+            crossorigin="anonymous"></script>
         <script>
             function command(command, data, port, callback) {
                 var sendData = {
@@ -29,6 +33,7 @@
             var params = new URLSearchParams(document.location.search.substring(1));
             var previousData = {'null':null};
             var uType = 'pc';
+            var cursor = 'default';
 
             function limit(v,_min,_max) {
                 if (v < _min) {
@@ -188,7 +193,8 @@
                                 'width':(50*Number(previousData.session.maps[m].grid_data.columns*localMapData[container.id].zoom)).toString()+'px',
                                 'height':(50*Number(previousData.session.maps[m].grid_data.rows*localMapData[container.id].zoom)).toString()+'px',
                                 'top':localMapData[container.id].pos[1].toString() + 'px',
-                                'left':localMapData[container.id].pos[0].toString() + 'px'
+                                'left':localMapData[container.id].pos[0].toString() + 'px',
+                                'cursor':cursor
                             });
                             container.setAttribute('zoom',localMapData[container.id].zoom.toString());
                             container.setAttribute('data',JSON.stringify(previousData.session.maps[m]));
@@ -202,6 +208,27 @@
                             });
                             localContainer.appendChild(mapImage);
                             container.appendChild(localContainer);
+                            if (cursor == 'move') {
+                                $(container).draggable({
+                                    'disabled':false
+                                });
+                            } else {
+                                $(container).draggable({
+                                    'disabled':true
+                                });
+                            }
+                            $(container).on('dragstop',function(event){
+                                var rect = event.target.getBoundingClientRect();
+                                var position = [
+                                    Math.round(rect.left-(window.innerWidth*0.05)).toString(), 
+                                    Math.round(rect.top-(window.innerHeight*0.05)).toString()
+                                ];
+                                $(container).css({
+                                    'top':position[1]+'px',
+                                    'left':position[0]+'px'
+                                });
+                                localMapData[container.id].pos = position;
+                            });
                             displayArea.appendChild(container);
                         }
                     }
@@ -502,6 +529,18 @@
                     $('#map-actions').toggleClass('active',false);
                 });
 
+                $('#cursors-bar button').click(function(event){
+                    console.log(event.target.nodeName);
+                    if (event.target.nodeName == 'IMG') {
+                        cursor = event.target.parentElement.getAttribute('name');
+                    } else {
+                        cursor = event.target.getAttribute('name');
+                    }
+                    console.log(event.target);
+                    console.log(cursor);
+                    refresh();
+                });
+
                 // Zooming
                 $('#display-area').on('wheel',function(event){
                     var topContainer = event.target.parentElement.parentElement;
@@ -513,17 +552,34 @@
                         } else if (Dy > 0) {
                             zoomMod -= 0.05;
                         }
-                        topContainer.setAttribute('zoom',limit(zoomMod,0.1,5).toString());
+                        topContainer.setAttribute('zoom',limit(zoomMod,0.1,2).toString());
                         localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
                         var dispArea = document.getElementById('display-area');
 
                         var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
                             dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
                         localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
+                        console.log(previousData.session);
+                        var cid = null;
+                        for (var i=0;i<previousData.session.maps.length;i++) {
+                            if (previousData.session.maps[i].id==topContainer.id) {
+                                cid = i;
+                            }
+                        }
+                        $(topContainer).css({
+                            'width':(50*Number(previousData.session.maps[cid].grid_data.columns*localMapData[topContainer.id].zoom)).toString()+'px',
+                            'height':(50*Number(previousData.session.maps[cid].grid_data.rows*localMapData[topContainer.id].zoom)).toString()+'px',
+                            'top':localMapData[topContainer.id].pos[1].toString() + 'px',
+                            'left':localMapData[topContainer.id].pos[0].toString() + 'px',
+                            'cursor':cursor
+                        });
 
-                        refresh();
+                        //refresh();
                     }
                 });
+
+                // Drag & Drop
+
 
                 // Refresh Loop
                 window.setInterval(function(){
@@ -565,6 +621,11 @@
         <div id="modal-back"></div>
         <iframe id="downloader" style="display:none;"></iframe>
         <div id='custom-context'>
+        </div>
+
+        <div id='cursors-bar'>
+            <button id='set-cursor-normal' name='default'><img src="assets/cursor.png"></button>
+            <button id='set-cursor-move' name='move'><img src="assets/move.png"></button>
         </div>
 
         <div id='top-bar'>
@@ -611,6 +672,8 @@
             <p>Treasure Chest Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Trash Can Icon: <a href="https://www.flaticon.com/free-icon/delete_1214594" title="Kiranshastry">Kiranshastry</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Place Map Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
+            <p>Basic Cursor Icon: <a href="https://icon54.com/" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Move Cursor Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->

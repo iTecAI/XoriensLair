@@ -107,7 +107,7 @@ class Session:
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
     
-    def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, Active]
+    def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['grid_data'] = {
