@@ -187,7 +187,7 @@
                         if (previousData.session.maps[m].active == 'true') {
                             var container = document.createElement('div');
                             
-                            container.className = 'map-container';
+                            container.className = 'map-container noselect';
                             container.id = previousData.session.maps[m].id;
                             $(container).css({
                                 'width':(50*Number(previousData.session.maps[m].grid_data.columns*localMapData[container.id].zoom)).toString()+'px',
@@ -206,7 +206,50 @@
                                 'width':'100%',
                                 'height':'100%'
                             });
+
                             localContainer.appendChild(mapImage);
+
+                            for (var x=0;x<previousData.session.maps[m].obscuration.length;x++) {
+                                for (var y=0;y<previousData.session.maps[m].obscuration[x].length;y++) {
+                                    var obRect = document.createElement('div');
+                                    $(obRect).css({
+                                        'width':(50*localMapData[container.id].zoom).toString()+'px',
+                                        'height':(50*localMapData[container.id].zoom).toString()+'px',
+                                        'position':'absolute',
+                                        'top':((50*localMapData[container.id].zoom)*y).toString()+'px',
+                                        'left':((50*localMapData[container.id].zoom)*x).toString()+'px'
+                                    });
+                                    if (Number(previousData.session.maps[m].obscuration[x][y]) == 1) {
+                                        $(obRect).css('background-color','rgba(0,0,0,1)');
+                                    } else {
+                                        $(obRect).css('background-color','rgba(0,0,0,0)');
+                                    }
+                                    $(obRect).attr('mapNum',m);
+                                    $(obRect).attr('mapId',container.id);
+                                    $(obRect).attr('x',x);
+                                    $(obRect).attr('y',y);
+                                    $(obRect).click(function(event){
+                                        var cur = event.delegateTarget;
+                                        
+                                        if (uType == 'dm') {
+                                            if (Number(previousData.session.maps[Number($(cur).attr('mapNum'))].obscuration[Number($(cur).attr('x'))][Number($(cur).attr('y'))]) == 1) {
+                                                scmd('obscure',[$(cur).attr('mapId'),Number($(cur).attr('x')),Number($(cur).attr('y')),0],function(data){
+                                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                                });
+                                            } else {
+                                                scmd('obscure',[$(cur).attr('mapId'),Number($(cur).attr('x')),Number($(cur).attr('y')),1],function(data){
+                                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                                });
+                                            }
+                                        }
+                                    });
+                                    localContainer.appendChild(obRect);
+                                }
+                            }
+
+                            
+
+                            // Drag & Drop code from JQuery UI
                             container.appendChild(localContainer);
                             if (cursor == 'move') {
                                 $(container).draggable({
@@ -229,12 +272,13 @@
                                 });
                                 localMapData[container.id].pos = position;
                             });
+
                             displayArea.appendChild(container);
                         }
                     }
                 }
             }
-            
+
             $(document).ready(function(){
                 // Page setup
                 $('#share-link').text(document.location); // Set the share link
@@ -559,13 +603,13 @@
                         var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
                             dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
                         localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
-                        console.log(previousData.session);
                         var cid = null;
                         for (var i=0;i<previousData.session.maps.length;i++) {
                             if (previousData.session.maps[i].id==topContainer.id) {
                                 cid = i;
                             }
                         }
+
                         $(topContainer).css({
                             'width':(50*Number(previousData.session.maps[cid].grid_data.columns*localMapData[topContainer.id].zoom)).toString()+'px',
                             'height':(50*Number(previousData.session.maps[cid].grid_data.rows*localMapData[topContainer.id].zoom)).toString()+'px',
@@ -573,8 +617,7 @@
                             'left':localMapData[topContainer.id].pos[0].toString() + 'px',
                             'cursor':cursor
                         });
-
-                        //refresh();
+                        refresh();
                     }
                 });
 
@@ -584,7 +627,7 @@
                 // Refresh Loop
                 window.setInterval(function(){
                     command('gsi',{'sid':params.get('id')},1023,refresh);
-                },400);
+                },5);
 
                 // Button Cosmetics
                 $('#modal-back').click(function(){$('.active').toggleClass('active',false);$('.invalid').toggleClass('invalid',false);});

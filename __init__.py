@@ -95,7 +95,7 @@ class Session:
             'markers': [],
             'npcs': [],
             'characters': [],
-            'obscuration': []
+            'obscuration': [[0 for y in range(int(args[2]))] for x in range(int(args[1]))]
         })
         return {'code':200}
     
@@ -116,6 +116,22 @@ class Session:
                     'size':args[3]
                 }
                 self.maps[i]['active'] = args[4]
+                return {'code':200}
+        return {'code':404,'reason':'Map not found.'}
+    
+    def obscure(self,fp,args): # [Map ID, Row, Column, Value]
+        args[1] = int(args[1])
+        args[2] = int(args[2])
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if args[3] == '1':
+                    val = 1
+                else :
+                    val = 0
+                try:
+                    self.maps[i]['obscuration'][args[1]][args[2]] = val
+                except IndexError:
+                    return {'code':404,'reason':'Grid coordinates not found.'}
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
 

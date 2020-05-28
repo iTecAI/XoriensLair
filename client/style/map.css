@@ -373,3 +373,7 @@ html {
 .map-container {
     position: absolute;
 }
+
+.map-local {
+    position: relative;
+}
