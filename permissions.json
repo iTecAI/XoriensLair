@@ -4,5 +4,6 @@
     "load_map":"dm",
     "delete_map":"dm",
     "modify_map":"dm",
-    "obscure":"dm"
+    "obscure":"dm",
+    "remove_obscure":"dm"
 }

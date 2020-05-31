@@ -29,13 +29,23 @@
                 setCookie('uid',sha256(Math.random().toString()),14);
             }
 
-            var BrowserFingerprint = getCookie('uid');
-            var params = new URLSearchParams(document.location.search.substring(1));
-            var previousData = {'null':null};
-            var uType = 'pc';
-            var cursor = 'default';
+            var BrowserFingerprint = getCookie('uid'); // Maintaining client session info with cookies
+            var params = new URLSearchParams(document.location.search.substring(1)); // Get session id
+            var previousData = {'null':null}; // Setup for data access
+            var uType = 'pc'; // User type
+            var cursor = 'default'; // Cursor type
+            var obscureInfo = {
+                obscuring:false,
+                id:null,
+                sx:null,
+                sy:null,
+                w:null,
+                h:null,
+                pageXS:null,
+                pageYS:null
+            }; // Obscure info maintain
 
-            function limit(v,_min,_max) {
+            function limit(v,_min,_max) { // limit v to min & max
                 if (v < _min) {
                     return _min;
                 } else if (v > _max) {
@@ -99,6 +109,13 @@
                 } else {
                     $('#map-actions').toggleClass('active',false);
                 }
+            }
+
+            function convertMouseToMapPos(id,x,y) {
+                var el = document.getElementById(id);
+                var data = JSON.parse(el.getAttribute('data'));
+                var rect = el.getBoundingClientRect();
+                return [(x-rect.left)/el.getAttribute('zoom'),(y-rect.top)/el.getAttribute('zoom')];
             }
 
             function saveAs(uri, filename) { // Code from https://stackoverflow.com/a/25715985
@@ -196,9 +213,102 @@
                                 'left':localMapData[container.id].pos[0].toString() + 'px',
                                 'cursor':cursor
                             });
+
+                            // Obscure functions
+                            $(container).mousedown(function(event){ // Start obscuring
+                                if (cursor != 'crosshair') {
+                                    return;
+                                }
+                                var target = event.delegateTarget;
+                                if (event.target.className == 'obscure') {
+                                    return;
+                                }
+                                
+                                obscureInfo.id = target.id;
+                                var pos = convertMouseToMapPos(target.id,event.pageX,event.pageY);
+                                obscureInfo.sx = pos[0];
+                                obscureInfo.sy = pos[1];
+                                obscureInfo.pageXS = event.pageX;
+                                obscureInfo.pageYS = event.pageY;
+                                obscureInfo.obscuring = true;
+                                $('#selection-box').css({
+                                    top:'0px',
+                                    left:'0px',
+                                    width:'0px',
+                                    height:'0px'
+                                });
+                                $('#selection-box').css('display','inline-block');
+                            });
+                            $(container).mousemove(function(event){ // Show obscure selection
+                                var target = event.delegateTarget;
+                                if (obscureInfo.obscuring && obscureInfo.id == target.id) {
+                                    if (event.pageX >= obscureInfo.pageXS) {
+                                        var left = obscureInfo.pageXS;
+                                        var width = event.pageX - left;
+                                    } else {
+                                        var left = event.pageX;
+                                        var width = obscureInfo.pageXS - left;
+                                    }
+
+                                    if (event.pageY >= obscureInfo.pageYS) {
+                                        var top = obscureInfo.pageYS;
+                                        var height = event.pageY - top;
+                                    } else {
+                                        var top = event.pageY;
+                                        var height = obscureInfo.pageYS - top;
+                                    }
+
+                                    $('#selection-box').css({
+                                        top:top.toString()+'px',
+                                        left:left.toString()+'px',
+                                        width:width.toString()+'px',
+                                        height:height.toString()+'px'
+                                    });
+                                }
+                            });
+                            $(container).mouseup(function(event){ // Obscure finish
+                                if (cursor != 'crosshair') {
+                                    return;
+                                }
+                                var target = event.delegateTarget;
+                                var data = JSON.parse($(target).attr('data'));
+                                if (obscureInfo.obscuring && obscureInfo.id == target.id) {
+                                    var newpos = convertMouseToMapPos(target.id,event.pageX,event.pageY);
+                                    if (newpos[0] >= obscureInfo.sx) {
+                                        obscureInfo.w = newpos[0]-obscureInfo.sx;
+                                    } else {
+                                        obscureInfo.w = obscureInfo.sx-newpos[0];
+                                        obscureInfo.sx = newpos[0];
+                                    }
+                                    
+                                    if (newpos[1] >= obscureInfo.sy) {
+                                        obscureInfo.h = newpos[1]-obscureInfo.sy;
+                                    } else {
+                                        obscureInfo.h = obscureInfo.sy-newpos[1];
+                                        obscureInfo.sy = newpos[1];
+                                    }
+                                    obscureInfo.obscuring = false;
+
+                                    var args = [
+                                        target.id,
+                                        (obscureInfo.sx/(Number(data.grid_data.columns)*50))*100,
+                                        (obscureInfo.sy/(Number(data.grid_data.rows)*50))*100,
+                                        (obscureInfo.w/(Number(data.grid_data.columns)*50))*100,
+                                        (obscureInfo.h/(Number(data.grid_data.rows)*50))*100,
+                                        sha256(Math.random().toString())
+                                    ];
+                                    console.log(args);
+
+                                    scmd('obscure',args,function(){$('#selection-box').css('display','none')});
+                                    
+                                }
+                            });
+
+
                             container.setAttribute('zoom',localMapData[container.id].zoom.toString());
                             container.setAttribute('data',JSON.stringify(previousData.session.maps[m]));
                             var localContainer = document.createElement('div');
+                            $(localContainer).css('position','relative');
                             localContainer.className = 'map-local';
                             var mapImage = document.createElement('img');
                             mapImage.src = previousData.session.maps[m].image;
@@ -206,45 +316,32 @@
                                 'width':'100%',
                                 'height':'100%'
                             });
+                            mapImage.setAttribute('draggable',false);
 
                             localContainer.appendChild(mapImage);
 
-                            for (var x=0;x<previousData.session.maps[m].obscuration.length;x++) {
-                                for (var y=0;y<previousData.session.maps[m].obscuration[x].length;y++) {
-                                    var obRect = document.createElement('div');
-                                    $(obRect).css({
-                                        'width':(50*localMapData[container.id].zoom).toString()+'px',
-                                        'height':(50*localMapData[container.id].zoom).toString()+'px',
-                                        'position':'absolute',
-                                        'top':((50*localMapData[container.id].zoom)*y).toString()+'px',
-                                        'left':((50*localMapData[container.id].zoom)*x).toString()+'px'
-                                    });
-                                    if (Number(previousData.session.maps[m].obscuration[x][y]) == 1) {
-                                        $(obRect).css('background-color','rgba(0,0,0,1)');
-                                    } else {
-                                        $(obRect).css('background-color','rgba(0,0,0,0)');
+                            for (var o=0;o<Object.keys(previousData.session.maps[m].obscuration).length;o++) {
+                                var oid = Object.keys(previousData.session.maps[m].obscuration)[o];
+                                var info = previousData.session.maps[m].obscuration[oid];
+
+                                var obElement = document.createElement('div');
+                                obElement.className = 'obscure';
+                                obElement.setAttribute('mapid',container.id);
+                                $(obElement).css({
+                                    'left':info[0].toString()+'%',
+                                    'top':info[1].toString()+'%',
+                                    'width':(info[2]).toString()+'%',
+                                    'height':(info[3]).toString()+'%',
+                                    'background-color':'rgb(0,0,0)',
+                                    'position':'absolute'
+                                });
+                                obElement.id = oid;
+                                $(obElement).click(function(event){
+                                    if (cursor =='crosshair') {
+                                        scmd('remove_obscure',[event.delegateTarget.getAttribute('mapid'),event.delegateTarget.id],refresh);
                                     }
-                                    $(obRect).attr('mapNum',m);
-                                    $(obRect).attr('mapId',container.id);
-                                    $(obRect).attr('x',x);
-                                    $(obRect).attr('y',y);
-                                    $(obRect).click(function(event){
-                                        var cur = event.delegateTarget;
-                                        
-                                        if (uType == 'dm') {
-                                            if (Number(previousData.session.maps[Number($(cur).attr('mapNum'))].obscuration[Number($(cur).attr('x'))][Number($(cur).attr('y'))]) == 1) {
-                                                scmd('obscure',[$(cur).attr('mapId'),Number($(cur).attr('x')),Number($(cur).attr('y')),0],function(data){
-                                                    command('gsi',{'sid':params.get('id')},1023,refresh);
-                                                });
-                                            } else {
-                                                scmd('obscure',[$(cur).attr('mapId'),Number($(cur).attr('x')),Number($(cur).attr('y')),1],function(data){
-                                                    command('gsi',{'sid':params.get('id')},1023,refresh);
-                                                });
-                                            }
-                                        }
-                                    });
-                                    localContainer.appendChild(obRect);
-                                }
+                                });
+                                localContainer.appendChild(obElement);
                             }
 
                             
@@ -574,13 +671,9 @@
                 });
 
                 $('#cursors-bar button').click(function(event){
-                    console.log(event.target.nodeName);
-                    if (event.target.nodeName == 'IMG') {
-                        cursor = event.target.parentElement.getAttribute('name');
-                    } else {
-                        cursor = event.target.getAttribute('name');
-                    }
-                    console.log(event.target);
+                    cursor = event.delegateTarget.getAttribute('name');
+                    
+                    console.log(event.delegateTarget);
                     console.log(cursor);
                     refresh();
                 });
@@ -621,13 +714,10 @@
                     }
                 });
 
-                // Drag & Drop
-
-
                 // Refresh Loop
                 window.setInterval(function(){
                     command('gsi',{'sid':params.get('id')},1023,refresh);
-                },5);
+                },400);
 
                 // Button Cosmetics
                 $('#modal-back').click(function(){$('.active').toggleClass('active',false);$('.invalid').toggleClass('invalid',false);});
@@ -667,8 +757,9 @@
         </div>
 
         <div id='cursors-bar'>
-            <button id='set-cursor-normal' name='default'><img src="assets/cursor.png"></button>
-            <button id='set-cursor-move' name='move'><img src="assets/move.png"></button>
+            <button id='set-cursor-normal' name='default'><img src="assets/cursor.png"><div>Select</div></button>
+            <button id='set-cursor-move' name='move'><img src="assets/move.png"><div>Move</div></button>
+            <button id='set-cursor-obscure' name='crosshair'><img src="assets/obscure.png"><div>Obscure</div></button>
         </div>
 
         <div id='top-bar'>
@@ -717,6 +808,7 @@
             <p>Place Map Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
             <p>Basic Cursor Icon: <a href="https://icon54.com/" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Move Cursor Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Obscuration Cursor Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->
@@ -766,5 +858,6 @@
                 <button style="width: 100%;margin-top: 2vh;" id='load-map'>Load New Map</button>
             </div>
         </div>
+        <div id='selection-box'></div>
     </body>
 </html>

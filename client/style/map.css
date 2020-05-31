@@ -38,9 +38,29 @@ html {
     margin: 0px;
     padding: 0px;
     padding-top: 0.5vh;
+    transition: background-color 0.1s, width 0.2s;
+    position: relative;
+}
+#cursors-bar button div {
+    display: inline-block;
+    width: 0vw;
+    transition: width 0.2s;
+    overflow: hidden;
+    color: rgb(221, 223, 235);
+    font-family: roboto;
+    font-size: 1vw;
+    margin-left: 0.25vw;
+    position: absolute;
+    right: 0.25vw;
+    top: 50%;
+    transform: translate(0%,-50%);
 }
 #cursors-bar button:hover {
     background-color: rgb(49, 45, 59);
+    width: 7vw;
+}
+#cursors-bar button:hover div {
+    width: 4vw;
 }
 #cursors-bar button img {
     height: 3vh;
@@ -48,6 +68,9 @@ html {
     margin: 0vh;
     padding: 0px;
     display: inline-block;
+    position: absolute;
+    left: 0.5vw;
+    top: 1vh;
 }
 
 #share-link {
@@ -376,4 +399,13 @@ html {
 
 .map-local {
     position: relative;
+}
+
+#selection-box {
+    position: absolute;
+    width: 0px;
+    height: 0px;
+    display: none;
+    background-color: rgba(53, 186, 248, 0.3);
+    z-index: 300;
 }

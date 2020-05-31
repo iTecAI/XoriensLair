@@ -95,7 +95,7 @@ class Session:
             'markers': [],
             'npcs': [],
             'characters': [],
-            'obscuration': [[0 for y in range(int(args[2]))] for x in range(int(args[1]))]
+            'obscuration': {}
         })
         return {'code':200}
     
@@ -119,22 +119,26 @@ class Session:
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
     
-    def obscure(self,fp,args): # [Map ID, Row, Column, Value]
-        args[1] = int(args[1])
-        args[2] = int(args[2])
+    def obscure(self,fp,args): # [Map ID, Top Corner X, Top Corner Y, Width, Height, Obscuration ID]
+        args[1] = float(args[1])
+        args[2] = float(args[2])
+        args[3] = float(args[3])
+        args[4] = float(args[4])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
-                if args[3] == '1':
-                    val = 1
-                else :
-                    val = 0
-                try:
-                    self.maps[i]['obscuration'][args[1]][args[2]] = val
-                except IndexError:
-                    return {'code':404,'reason':'Grid coordinates not found.'}
+                self.maps[i]['obscuration'][args[5]] = [args[1],args[2],args[3],args[4]]
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
-
+    
+    def remove_obscure(self,fp,args): # [Map ID, Obscuration ID]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if args[1] in self.maps[i]['obscuration'].keys():
+                    del self.maps[i]['obscuration'][args[1]]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'Obscure not found.'}
+        return {'code':404,'reason':'Map not found.'}
 
         
 
