@@ -44,10 +44,14 @@
                 pageXS:null,
                 pageYS:null
             }; // Obscure info maintain
-            var ctxMenu = [
-                '#display-area',
-                '.map-container'
-            ]; // Selectors to activate custom context menu on
+            var ctxMenu = {
+                '#display-area':{
+
+                },
+                '.map-container':{
+                    'map-close':'dm'
+                }
+            }; // Selectors to activate custom context menu on
             var currentCtx = null; // Currently active context menu
 
             function limit(v,_min,_max) { // limit v to min & max
@@ -331,8 +335,8 @@
                                         (obscureInfo.h/(Number(data.grid_data.rows)*50))*100,
                                         sha256(Math.random().toString())
                                     ];
-                                    if (array[3] < 5 || array[4] < 5) {
-                                        return
+                                    if (args[3] < 5 || args[4] < 5) {
+                                        return;
                                     }
 
                                     scmd('obscure',args,function(){$('#selection-box').css('display','none')});
@@ -497,9 +501,11 @@
                 // Context menu manager
 
                 $(document).contextmenu(function(event,x,y){
-                    for (var s=0;s<ctxMenu.length;s++){
-                        var type = ctxMenu[s].charAt(0);
-                        var name = ctxMenu[s].slice(1);
+                    var keys = Object.keys(ctxMenu);
+                    for (var s=0;s<keys.length;s++){
+                        var type = keys[s].charAt(0);
+                        var name = keys[s].slice(1);
+                        var sel = keys[s];
                         var found = false;
                         if (type == '#') {
                             if (event.target.id == name) {
@@ -523,18 +529,34 @@
                             var cx = event.clientX;
                             var cy = event.clientY;
                         }
-                        $('#ctx_'+name).css({
+                        $('#custom-ctx').css({
                             top:cy+'px',
                             left:cx.toString()+'px'
                         });
-                        $('#ctx_'+name).toggleClass('active',true);
+
+                        var children = $('#custom-ctx').children('*');
+                        for (var c=0; c<children.length; c++) {
+                            if (Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx'))) {
+                                if (uType == ctxMenu[sel][$(children[c]).attr('ctx')]) {
+                                    $(children[c]).toggleClass('active',true);
+                                } else { $(children[c]).toggleClass('active',true); }
+                            } else { $(children[c]).toggleClass('active',true); }
+                        }
+
+                        $('#custom-ctx').toggleClass('active',true);
                         event.preventDefault();
                     }
                 });
                 $(document).click(function(event){
-                    if (!$(event.target).hasClass('ctx-button')) {
-                        $('.custom-ctx').toggleClass('active',false);
+                    if (event.target == undefined) {
+                        $('#custom-ctx').toggleClass('active',false);
+                        currentCtx = null;
                     }
+                    if (!$(event.target).hasClass('ctx-button')) {
+                        $('#custom-ctx').toggleClass('active',false);
+                        currentCtx = null;
+                    }
+                    
                 });
 
                 // Button functions
@@ -820,7 +842,21 @@
                     $('#maps-area img').toggleClass('selected',false);
                     refresh();
                 });
+
+                // Context menu actions
+                $('#ctx_map-close').click(function(event){
+                    var mapData = JSON.parse($('#'+currentCtx).attr('data'));
+                    scmd('modify_map',[
+                    $('#'+currentCtx).attr('id'),
+                    mapData.grid_data.rows,
+                    mapData.grid_data.columns,
+                    mapData.grid_data.size,false
+                    ],refresh);
+                    $(document).click();
+                });
             });
+
+
             
         </script>
 
@@ -831,13 +867,8 @@
     <body>
         <div id="modal-back"></div>
         <iframe id="downloader" style="display:none;"></iframe>
-        <div id='context-menus'>
-            <div class='custom-ctx' id='ctx_display-area'>
-                
-            </div>
-            <div class='custom-ctx' id='ctx_map-container'>
-                <button class='ctx-button' id='ctx-mc-close'>Close Map</button>
-            </div>
+        <div id='custom-ctx'>
+            <button class='ctx-button' id='ctx_map-close' ctx='map-close'>Close Map</button>
         </div>
 
         <div id='cursors-bar'>
