@@ -48,7 +48,7 @@ h3 {
     font-family: roboto-thin;
 }
 
-#custom-context {
+.custom-ctx {
     position: absolute;
     height: fit-content;
     width: 10vw;
@@ -61,19 +61,23 @@ h3 {
     z-index: 1000;
 }
 
-#custom-context.active {
+.custom-ctx.active {
     display: inline-block;
 }
 
-.item {
+.custom-ctx button {
     margin: 0px;
     list-style: none;
     padding: 10px;
     background-color: rgb(240,240,240);
     text-align: center;
+    border: none;
+    width: 100%;
+    font-family: roboto;
+    font-size: 100%;
 }
 
-.item:hover {
+.custom-ctx button:hover {
     background-color: rgb(211,211,211);
 }
 

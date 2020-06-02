@@ -5,5 +5,10 @@ ip = sys.argv[1]
 port = int(sys.argv[2])
 direc = sys.argv[3]
 
-server = ThreadingHTTPServer((ip,port),SimpleHTTPRequestHandler)
+class Handler(SimpleHTTPRequestHandler):
+    def __init__(self, *args, **kwargs):
+        global direc
+        super().__init__(*args, directory=direc, **kwargs)
+
+server = ThreadingHTTPServer((ip,port),Handler)
 server.serve_forever()

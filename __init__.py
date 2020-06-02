@@ -11,7 +11,7 @@ from random import  random
 IP = '192.168.86.36'
 S_PORT = 1022
 A_PORT = 1023
-DIR = 'client'
+DIR = os.path.join(os.getcwd(),'client/')
 
 class Session:
     def __init__(self,session=None):

@@ -44,6 +44,11 @@
                 pageXS:null,
                 pageYS:null
             }; // Obscure info maintain
+            var ctxMenu = [
+                '#display-area',
+                '.map-container'
+            ]; // Selectors to activate custom context menu on
+            var currentCtx = null; // Currently active context menu
 
             function limit(v,_min,_max) { // limit v to min & max
                 if (v < _min) {
@@ -238,10 +243,11 @@
                                     height:'0px'
                                 });
                                 $('#selection-box').css('display','inline-block');
+                                
                             });
                             $(container).mousemove(function(event){ // Show obscure selection
                                 var target = event.delegateTarget;
-                                if (obscureInfo.obscuring && obscureInfo.id == target.id) {
+                                if (obscureInfo.obscuring && (obscureInfo.id == target.id || target.id == 'selection-box')) {
                                     if (event.pageX >= obscureInfo.pageXS) {
                                         var left = obscureInfo.pageXS;
                                         var width = event.pageX - left;
@@ -259,10 +265,38 @@
                                     }
 
                                     $('#selection-box').css({
-                                        top:top.toString()+'px',
-                                        left:left.toString()+'px',
+                                        top:(top-2).toString()+'px',
+                                        left:(left-2).toString()+'px',
                                         width:width.toString()+'px',
                                         height:height.toString()+'px'
+                                    });
+                                }
+                            });
+                            $('#selection-box').mousemove(function(event){ // Show obscure selection
+                                var target = event.delegateTarget;
+                                if (obscureInfo.obscuring && target.id == 'selection-box') {
+                                    if (event.pageX >= obscureInfo.pageXS) {
+                                        var left = obscureInfo.pageXS;
+                                        var width = event.pageX - left;
+                                    } else {
+                                        var left = event.pageX;
+                                        var width = obscureInfo.pageXS - left;
+                                    }
+
+                                    if (event.pageY >= obscureInfo.pageYS) {
+                                        var top = obscureInfo.pageYS;
+                                        var height = event.pageY - top;
+                                    } else {
+                                        var top = event.pageY;
+                                        var height = obscureInfo.pageYS - top;
+                                    }
+
+                                    $('#selection-box').css({
+                                        top:(top-2).toString()+'px',
+                                        left:(left-2).toString()+'px',
+                                        width:width.toString()+'px',
+                                        height:height.toString()+'px',
+                                        cursor:cursor
                                     });
                                 }
                             });
@@ -272,7 +306,7 @@
                                 }
                                 var target = event.delegateTarget;
                                 var data = JSON.parse($(target).attr('data'));
-                                if (obscureInfo.obscuring && obscureInfo.id == target.id) {
+                                if (obscureInfo.obscuring && (obscureInfo.id == target.id || target.id == 'selection-box')) {
                                     var newpos = convertMouseToMapPos(target.id,event.pageX,event.pageY);
                                     if (newpos[0] >= obscureInfo.sx) {
                                         obscureInfo.w = newpos[0]-obscureInfo.sx;
@@ -297,10 +331,19 @@
                                         (obscureInfo.h/(Number(data.grid_data.rows)*50))*100,
                                         sha256(Math.random().toString())
                                     ];
-                                    console.log(args);
+                                    if (array[3] < 5 || array[4] < 5) {
+                                        return
+                                    }
 
                                     scmd('obscure',args,function(){$('#selection-box').css('display','none')});
                                     
+                                }
+                            });
+
+                            $('#display-area').mousemove(function(event){
+                                if (obscureInfo.obscuring && event.target.id == 'display-area') {
+                                    $('#selection-box').css('display','none');
+                                    obscureInfo.obscuring = false;
                                 }
                             });
 
@@ -312,6 +355,10 @@
                             localContainer.className = 'map-local';
                             var mapImage = document.createElement('img');
                             mapImage.src = previousData.session.maps[m].image;
+                            $(mapImage).contextmenu(function(event){
+                                event.preventDefault();
+                                $(event.target.parentElement.parentElement).trigger('contextmenu',[event.pageX,event.pageY]);
+                            });
                             $(mapImage).css({
                                 'width':'100%',
                                 'height':'100%'
@@ -368,6 +415,7 @@
                                     'left':position[0]+'px'
                                 });
                                 localMapData[container.id].pos = position;
+                                console.log(localMapData);
                             });
 
                             displayArea.appendChild(container);
@@ -447,18 +495,46 @@
                 }, 2000);
                 
                 // Context menu manager
-                window.addEventListener("contextmenu", e => {
-                    if (event.target.id == 'display-area') {
-                        e.preventDefault();
-                        $('#custom-context').css({
-                            'top':e.pageY,
-                            'left':e.pageX
+
+                $(document).contextmenu(function(event,x,y){
+                    for (var s=0;s<ctxMenu.length;s++){
+                        var type = ctxMenu[s].charAt(0);
+                        var name = ctxMenu[s].slice(1);
+                        var found = false;
+                        if (type == '#') {
+                            if (event.target.id == name) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (type == '.') {
+                            if ($(event.target).hasClass(name)) {
+                                found = true
+                                break;
+                            }
+                        }
+                    }
+                    if (found) {
+                        currentCtx = event.target.id;
+                        if (event.clientX == undefined) {
+                            var cx = x;
+                            var cy = y;
+                        } else {
+                            var cx = event.clientX;
+                            var cy = event.clientY;
+                        }
+                        $('#ctx_'+name).css({
+                            top:cy+'px',
+                            left:cx.toString()+'px'
                         });
-                        $('#custom-context').toggleClass('active',true);
+                        $('#ctx_'+name).toggleClass('active',true);
+                        event.preventDefault();
                     }
                 });
-                window.addEventListener("click", e => {
-                    $('#custom-context').toggleClass('active',false);
+                $(document).click(function(event){
+                    if (!$(event.target).hasClass('ctx-button')) {
+                        $('.custom-ctx').toggleClass('active',false);
+                    }
                 });
 
                 // Button functions
@@ -692,6 +768,8 @@
                         topContainer.setAttribute('zoom',limit(zoomMod,0.1,2).toString());
                         localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
                         var dispArea = document.getElementById('display-area');
+                        var dispRect = dispArea.getBoundingClientRect();
+                        var topContainerRect = topContainer.getBoundingClientRect();
 
                         var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
                             dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
@@ -753,7 +831,13 @@
     <body>
         <div id="modal-back"></div>
         <iframe id="downloader" style="display:none;"></iframe>
-        <div id='custom-context'>
+        <div id='context-menus'>
+            <div class='custom-ctx' id='ctx_display-area'>
+                
+            </div>
+            <div class='custom-ctx' id='ctx_map-container'>
+                <button class='ctx-button' id='ctx-mc-close'>Close Map</button>
+            </div>
         </div>
 
         <div id='cursors-bar'>
