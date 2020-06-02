@@ -535,12 +535,13 @@
                         });
 
                         var children = $('#custom-ctx').children('*');
+                        console.log(sel,Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx')),uType == ctxMenu[sel][$(children[c]).attr('ctx')]);
                         for (var c=0; c<children.length; c++) {
                             if (Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx'))) {
                                 if (uType == ctxMenu[sel][$(children[c]).attr('ctx')]) {
                                     $(children[c]).toggleClass('active',true);
-                                } else { $(children[c]).toggleClass('active',true); }
-                            } else { $(children[c]).toggleClass('active',true); }
+                                } else { $(children[c]).toggleClass('active',false); }
+                            } else { $(children[c]).toggleClass('active',false); }
                         }
 
                         $('#custom-ctx').toggleClass('active',true);
@@ -550,10 +551,12 @@
                 $(document).click(function(event){
                     if (event.target == undefined) {
                         $('#custom-ctx').toggleClass('active',false);
+                        $('#custom-ctx *').toggleClass('active',false);
                         currentCtx = null;
                     }
-                    if (!$(event.target).hasClass('ctx-button')) {
+                    if ($(event.target).attr('id')!='custom-ctx') {
                         $('#custom-ctx').toggleClass('active',false);
+                        $('#custom-ctx *').toggleClass('active',false);
                         currentCtx = null;
                     }
                     
