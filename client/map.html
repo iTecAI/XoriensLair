@@ -184,6 +184,13 @@
                     }
                     $('#session-name').text('Session Name: '+previousData.name);
 
+                    // Hide or show user-type specific elements
+                    if (uType == 'dm') {
+                        $('.player-only').hide();
+                    } else {
+                        $('.dm-only').hide();
+                    }
+
                     var mapArea = document.getElementById('maps-area');
                     mapArea.innerHTML = '';
                     var displayArea = document.getElementById('display-area');
@@ -877,7 +884,7 @@
         <div id='cursors-bar'>
             <button id='set-cursor-normal' name='default'><img src="assets/cursor.png"><div>Select</div></button>
             <button id='set-cursor-move' name='move'><img src="assets/move.png"><div>Move</div></button>
-            <button id='set-cursor-obscure' name='crosshair'><img src="assets/obscure.png"><div>Obscure</div></button>
+            <button id='set-cursor-obscure' name='crosshair' class='dm-only'><img src="assets/obscure.png"><div>Obscure</div></button>
         </div>
 
         <div id='top-bar'>
