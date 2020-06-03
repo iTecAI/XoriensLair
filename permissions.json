@@ -5,5 +5,8 @@
     "delete_map":"dm",
     "modify_map":"dm",
     "obscure":"dm",
-    "remove_obscure":"dm"
+    "remove_obscure":"dm",
+    "activate_pc":"pc",
+    "deactivate_pc":"pc",
+    "move_pc":"pc"
 }

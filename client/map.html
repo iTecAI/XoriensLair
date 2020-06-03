@@ -44,14 +44,16 @@
                 pageXS:null,
                 pageYS:null
             }; // Obscure info maintain
-            var ctxMenu = {
+            var ctxMenu = { // Selectors to activate custom context menu on
                 '#display-area':{
 
                 },
                 '.map-container':{
-                    'map-close':'dm'
+                    'map-close':'dm',
+                    'add-pc':'pc',
+                    'add-npc':'dm'
                 }
-            }; // Selectors to activate custom context menu on
+            }; 
             var currentCtx = null; // Currently active context menu
 
             function limit(v,_min,_max) { // limit v to min & max
@@ -62,6 +64,10 @@
                 } else {
                     return v
                 }
+            }
+
+            function roundTo(v,interval) { // Round v to nearest interval (ie round 54 to nearest 50 = 50, round 97 to nearest 50 = 100)
+                return Math.round(v/interval)*interval;
             }
 
             function scmd(cmd,args,callback) {
@@ -378,6 +384,8 @@
 
                             localContainer.appendChild(mapImage);
 
+                            // Draw obscuration rects
+
                             for (var o=0;o<Object.keys(previousData.session.maps[m].obscuration).length;o++) {
                                 var oid = Object.keys(previousData.session.maps[m].obscuration)[o];
                                 var info = previousData.session.maps[m].obscuration[oid];
@@ -402,7 +410,64 @@
                                 localContainer.appendChild(obElement);
                             }
 
-                            
+                            // Add active characters to the map
+                            for (var c=0;c<Object.keys(previousData.session.maps[m].characters).length;c++) {
+                                var key = Object.keys(previousData.session.maps[m].characters)[c];
+                                var id = Object.keys(previousData.session.maps[m].characters)[c];
+                                var name = previousData.session.maps[m].characters[key].name;
+                                var position = previousData.session.maps[m].characters[key].pos;
+                                var icon = previousData.session.maps[m].characters[key].icon;
+                                var data = previousData.session.characters[key];
+                                if (!icon.includes('data')) {
+                                    icon = 'assets/icons/'+iconIndex[icon];
+                                }
+
+                                var pcElement = document.createElement('div');
+                                pcElement.id = id;
+                                pcElement.setAttribute('mapId',container.id);
+                                pcElement.title = 'Name: '+name+' | HP: '+data.hp+'/'+data.max_hp+' | AC: '+data.ac;
+                                pcElement.className = 'pc-icon';
+                                var pcImg = document.createElement('img');
+                                pcImg.src = icon;
+                                pcElement.appendChild(pcImg);
+                                $(pcElement).css({
+                                    top:((Number(position[1])/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
+                                    left:((Number(position[0])/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
+                                    width:((1/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
+                                    height:((1/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
+                                    position:'absolute'
+                                });
+
+                                // Drag & Drop
+                                if (cursor == 'move') {
+                                    $(pcElement).draggable({
+                                        'disabled':false
+                                    });
+                                } else {
+                                    $(pcElement).draggable({
+                                        'disabled':true
+                                    });
+                                }
+                                $(pcElement).on('dragstop',function(event){
+                                    var pos = convertMouseToMapPos($(event.target).attr('mapId'),event.pageX,event.pageY);
+                                    var data = JSON.parse($('#'+container.id).attr('data'));
+                                    scmd(
+                                        'move_pc',
+                                        [
+                                            $(event.target).attr('mapId'),
+                                            roundTo(pos[0],50*localMapData[container.id].zoom)/(50*localMapData[container.id].zoom)-0.5,
+                                            roundTo(pos[1],50*localMapData[container.id].zoom)/(50*localMapData[container.id].zoom)-0.5
+                                        ],
+                                        function(data){
+                                            if (data.code == 200) {
+                                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                                            }
+                                        }
+                                    );
+                                });
+
+                                localContainer.appendChild(pcElement);
+                            }
 
                             // Drag & Drop code from JQuery UI
                             container.appendChild(localContainer);
@@ -416,6 +481,9 @@
                                 });
                             }
                             $(container).on('dragstop',function(event){
+                                if (event.target.classList.contains('pc-icon')) {
+                                    return;
+                                }
                                 var rect = event.target.getBoundingClientRect();
                                 var position = [
                                     Math.round(rect.left-(window.innerWidth*0.05)).toString(), 
@@ -864,6 +932,16 @@
                     ],refresh);
                     $(document).click();
                 });
+                $('#ctx_add-pc').click(function(event){
+                    /*var cmp = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
+                    var mapData = JSON.parse($('#'+currentCtx).attr('data'));*/
+                    scmd(
+                        'activate_pc',
+                        [currentCtx,'Dice'],
+                        console.log
+                    );
+                    $(document).click();
+                });
             });
 
 
@@ -879,6 +957,8 @@
         <iframe id="downloader" style="display:none;"></iframe>
         <div id='custom-ctx'>
             <button class='ctx-button' id='ctx_map-close' ctx='map-close'>Close Map</button>
+            <button class='ctx-button' id='ctx_add-pc' ctx='add-pc'>Add Player Character</button>
+            <button class='ctx-button' id='ctx_add-npc' ctx='add-npc'>Add NPC</button>
         </div>
 
         <div id='cursors-bar'>

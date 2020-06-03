@@ -22,39 +22,6 @@ class Session:
             self.characters = session['characters']
         else:
             self.maps = []
-            '''
-            Map dict structure
-
-            {
-                image: Data URL of map image
-                id: map ID
-                active: whether the map is visible (t/f)
-                markers: [
-                    {
-                        icon: ID of marker icon to use
-                        label: Optional label
-                        position: [x,y]
-                    },...
-                ]
-                npcs: [
-                    {
-                        icon: Data URL or marker ID
-                        name: NPC name or identifier
-                        position: [x,y]
-                        data: Item object for the NPC
-                    },...
-                ]
-                characters: [
-                    {
-                        name: Character name to refer to global character list
-                        position: [x,y]
-                    },...
-                ]
-                obscuration: [
-                    List of obscured rects
-                ]
-            }
-            '''
             self.characters = {}
 
     def jsonify(self):
@@ -94,7 +61,7 @@ class Session:
             'active': False,
             'markers': [],
             'npcs': [],
-            'characters': [],
+            'characters': {},
             'obscuration': {}
         })
         return {'code':200}
@@ -138,6 +105,37 @@ class Session:
                     return {'code':200}
                 else:
                     return {'code':404,'reason':'Obscure not found.'}
+        return {'code':404,'reason':'Map not found.'}
+    
+    def activate_pc(self,fp,args): # [Map ID, Icon Name or Data URL]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                self.maps[i]['characters'][fp] = {
+                    'name':self.characters[fp]['name'],
+                    'pos':[0,0],
+                    'icon':args[1]
+                }
+                return {'code':200}
+        return {'code':404,'reason':'Map not found.'}
+    
+    def move_pc(self,fp,args): # [Map ID, X, Y]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if fp in self.maps[i]['characters'].keys():
+                    self.maps[i]['characters'][fp]['pos'] = [int(float(args[1])),int(float(args[2]))]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'Character not found.'}
+        return {'code':404,'reason':'Map not found.'}
+    
+    def deactivate_pc(self,fp,args): # [Map ID]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if fp in self.maps[i]['characters'].keys():
+                    del self.maps[i]['characters'][fp]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
 
         
@@ -234,7 +232,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             with open('permissions.json','r') as perms:
                 pdict = json.loads(perms.read())
                 if data['command'] in pdict.keys():
-                    if pdict[data['command']] == dat['type']:
+                    if dat['type'] in pdict[data['command']].split(','):
                         return 200, getattr(self.sessions[data['sid']]['instance'],data['command'])(data['fingerprint'],data['args'].split('|'))
                     else:
                         return 200, {'code':403,'reason':'Forbidden: User does not have access to the command "'+data['command']+'".'}
