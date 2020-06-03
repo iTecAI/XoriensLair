@@ -450,14 +450,15 @@
                                 }
                                 $(pcElement).on('dragstop',function(event){
                                     var pos = convertMouseToMapPos($(event.target).attr('mapId'),event.pageX,event.pageY);
-                                    var data = JSON.parse($('#'+container.id).attr('data'));
+                                    var args = [
+                                        $(event.target).attr('mapId'),
+                                        roundTo(pos[0],50)/50,
+                                        roundTo(pos[1],50)/50
+                                    ];
+                                    console.log(args);
                                     scmd(
                                         'move_pc',
-                                        [
-                                            $(event.target).attr('mapId'),
-                                            roundTo(pos[0],50*localMapData[container.id].zoom)/(50*localMapData[container.id].zoom)-0.5,
-                                            roundTo(pos[1],50*localMapData[container.id].zoom)/(50*localMapData[container.id].zoom)-0.5
-                                        ],
+                                        args,
                                         function(data){
                                             if (data.code == 200) {
                                                 command('gsi',{'sid':params.get('id')},1023,refresh);
