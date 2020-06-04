@@ -52,6 +52,9 @@
                     'map-close':'dm',
                     'add-pc':'pc',
                     'add-npc':'dm'
+                },
+                '.pc-icon':{
+                    'remove-pc':'pc'
                 }
             }; 
             var currentCtx = null; // Currently active context menu
@@ -429,6 +432,10 @@
                                 pcElement.className = 'pc-icon';
                                 var pcImg = document.createElement('img');
                                 pcImg.src = icon;
+                                $(pcImg).on('contextmenu',function(event){
+                                    event.preventDefault();
+                                    $(event.target.parentElement).trigger('contextmenu',[event.pageX,event.pageY]);
+                                });
                                 pcElement.appendChild(pcImg);
                                 $(pcElement).css({
                                     top:((Number(position[1])/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
@@ -438,22 +445,27 @@
                                     position:'absolute'
                                 });
 
+                                localContainer.appendChild(pcElement);
+
                                 // Drag & Drop
                                 if (cursor == 'move' && uType == 'pc') {
                                     $(pcElement).draggable({
-                                        'disabled':false
-                                    });
+                                        'disabled':false,
+                                        'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
+                                        'containment':'parent'
+                                    }).appendTo(pcElement).css('position','absolute');
                                 } else {
                                     $(pcElement).draggable({
                                         'disabled':true
                                     });
                                 }
                                 $(pcElement).on('dragstop',function(event){
-                                    var pos = convertMouseToMapPos($(event.target).attr('mapId'),event.pageX,event.pageY);
+                                    var rect = event.target.getBoundingClientRect();
+                                    var pos = convertMouseToMapPos($(event.target).attr('mapId'),rect.left,rect.top);
                                     var args = [
                                         $(event.target).attr('mapId'),
-                                        roundTo(pos[0],50)/50,
-                                        roundTo(pos[1],50)/50
+                                        Math.trunc(pos[0]/50),
+                                        Math.trunc(pos[1]/50)
                                     ];
                                     console.log(args);
                                     scmd(
@@ -465,21 +477,21 @@
                                             }
                                         }
                                     );
-                                });
-
-                                localContainer.appendChild(pcElement);
+                                });                                
                             }
+
+                            displayArea.appendChild(container);
 
                             // Drag & Drop code from JQuery UI
                             container.appendChild(localContainer);
                             if (cursor == 'move') {
                                 $(container).draggable({
                                     'disabled':false
-                                });
+                                }).appendTo(container).css('position','absolute');
                             } else {
                                 $(container).draggable({
                                     'disabled':true
-                                });
+                                }).appendTo(container).css('position','absolute');
                             }
                             $(container).on('dragstop',function(event){
                                 if (event.target.classList.contains('pc-icon')) {
@@ -487,18 +499,55 @@
                                 }
                                 var rect = event.target.getBoundingClientRect();
                                 var position = [
-                                    Math.round(rect.left-(window.innerWidth*0.05)).toString(), 
-                                    Math.round(rect.top-(window.innerHeight*0.05)).toString()
+                                    Math.round(rect.left-(window.innerWidth*0.05)).toString(), //-(window.innerWidth*0.05)
+                                    Math.round(rect.top-(window.innerHeight*0.05)).toString() //-(window.innerHeight*0.05)
                                 ];
-                                $(container).css({
+                                $(event.delegateTarget).css({
                                     'top':position[1]+'px',
-                                    'left':position[0]+'px'
+                                    'left':position[0]+'px',
+                                    'postion':'absolute'
                                 });
-                                localMapData[container.id].pos = position;
+                                localMapData[event.delegateTarget.id].pos = position;
                                 console.log(localMapData);
                             });
 
-                            displayArea.appendChild(container);
+                            $(container).on('wheel',function(event){
+                                var topContainer = event.delegateTarget;
+                                var Dy = event.originalEvent.deltaY;
+                                var zoomMod = Number(topContainer.getAttribute('zoom'));
+                                if (Dy < 0) {
+                                    zoomMod += 0.05;
+                                } else if (Dy > 0) {
+                                    zoomMod -= 0.05;
+                                }
+                                topContainer.setAttribute('zoom',limit(zoomMod,0.1,2).toString());
+                                localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
+                                var dispArea = document.getElementById('display-area');
+                                var dispRect = dispArea.getBoundingClientRect();
+                                var topContainerRect = topContainer.getBoundingClientRect();
+
+                                var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
+                                    dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
+                                localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
+                                var cid = null;
+                                for (var i=0;i<previousData.session.maps.length;i++) {
+                                    if (previousData.session.maps[i].id==topContainer.id) {
+                                        cid = i;
+                                    }
+                                }
+
+                                $(topContainer).css({
+                                    'width':(50*Number(previousData.session.maps[cid].grid_data.columns*localMapData[topContainer.id].zoom)).toString()+'px',
+                                    'height':(50*Number(previousData.session.maps[cid].grid_data.rows*localMapData[topContainer.id].zoom)).toString()+'px',
+                                    'top':localMapData[topContainer.id].pos[1].toString() + 'px',
+                                    'left':localMapData[topContainer.id].pos[0].toString() + 'px',
+                                    'cursor':cursor,
+                                    'position':'absolute'
+                                });
+                                refresh();
+                            });
+
+                            
                         }
                     }
                 }
@@ -577,6 +626,7 @@
                 // Context menu manager
 
                 $(document).contextmenu(function(event,x,y){
+                    console.log(event.target);
                     var keys = Object.keys(ctxMenu);
                     for (var s=0;s<keys.length;s++){
                         var type = keys[s].charAt(0);
@@ -856,7 +906,7 @@
                 });
 
                 // Zooming
-                $('#display-area').on('wheel',function(event){
+                /*$('#display-area').on('wheel',function(event){
                     var topContainer = event.target.parentElement.parentElement;
                     if (topContainer.classList.contains('map-container')) {
                         var Dy = event.originalEvent.deltaY;
@@ -891,7 +941,7 @@
                         });
                         refresh();
                     }
-                });
+                });*/
 
                 // Refresh Loop
                 window.setInterval(function(){
@@ -936,9 +986,24 @@
                 $('#ctx_add-pc').click(function(event){
                     /*var cmp = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
                     var mapData = JSON.parse($('#'+currentCtx).attr('data'));*/
+                    var pos = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
+                    var args = [
+                        currentCtx,
+                        'Dice',
+                        roundTo(pos[0],50)/50,
+                        roundTo(pos[1],50)/50
+                    ];
                     scmd(
                         'activate_pc',
-                        [currentCtx,'Dice'],
+                        args,
+                        console.log
+                    );
+                    $(document).click();
+                });
+                $('#ctx_remove-pc').click(function(event){
+                    scmd(
+                        'deactivate_pc',
+                        [$('#'+currentCtx).attr('mapId')],
                         console.log
                     );
                     $(document).click();
@@ -960,6 +1025,7 @@
             <button class='ctx-button' id='ctx_map-close' ctx='map-close'>Close Map</button>
             <button class='ctx-button' id='ctx_add-pc' ctx='add-pc'>Add Player Character</button>
             <button class='ctx-button' id='ctx_add-npc' ctx='add-npc'>Add NPC</button>
+            <button class='ctx-button' id='ctx_remove-pc' ctx='remove-pc'>Close Player Character</button>
         </div>
 
         <div id='cursors-bar'>
@@ -996,7 +1062,9 @@
             </div>
         </div>
         
-        <div id='display-area'></div>
+        <div id='display'>
+            <div id='display-area'></div>
+        </div>
 
         <div id='icon-attribution' class='noscroll'>
             <img src='assets/uparrow.png' width="32px" height="32px">

@@ -60,7 +60,7 @@ class Session:
             },
             'active': False,
             'markers': [],
-            'npcs': [],
+            'npcs': {},
             'characters': {},
             'obscuration': {}
         })
@@ -107,12 +107,12 @@ class Session:
                     return {'code':404,'reason':'Obscure not found.'}
         return {'code':404,'reason':'Map not found.'}
     
-    def activate_pc(self,fp,args): # [Map ID, Icon Name or Data URL]
+    def activate_pc(self,fp,args): # [Map ID, Icon Name or Data URL, X, Y]
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['characters'][fp] = {
                     'name':self.characters[fp]['name'],
-                    'pos':[0,0],
+                    'pos':[int(args[2]),int(args[3])],
                     'icon':args[1]
                 }
                 return {'code':200}
