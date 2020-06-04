@@ -440,8 +440,8 @@
                                 $(pcElement).css({
                                     top:((Number(position[1])/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
                                     left:((Number(position[0])/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
-                                    width:((1/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
-                                    height:((1/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
+                                    width:(((5/Number(previousData.session.maps[m].grid_data.size))/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
+                                    height:(((5/Number(previousData.session.maps[m].grid_data.size))/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
                                     position:'absolute'
                                 });
 
@@ -453,7 +453,7 @@
                                         'disabled':false,
                                         'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
                                         'containment':'parent'
-                                    }).appendTo(pcElement).css('position','absolute');
+                                    });
                                 } else {
                                     $(pcElement).draggable({
                                         'disabled':true

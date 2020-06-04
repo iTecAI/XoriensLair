@@ -11,7 +11,7 @@
 .noscroll::-webkit-scrollbar {
     display: none;
 }
-.noscroll {z
+.noscroll {
     -ms-overflow-style: none;
 }
 
