@@ -59,6 +59,13 @@
             }; 
             var currentCtx = null; // Currently active context menu
 
+            var npcData = { // Data for making NPCs
+                makingNPC:false,
+                map:null,
+                pos:[0,0],
+                data:null
+            };
+
             function limit(v,_min,_max) { // limit v to min & max
                 if (v < _min) {
                     return _min;
@@ -557,16 +564,18 @@
                 // Page setup
                 $('#share-link').text(document.location); // Set the share link
                 
-                var iconKeys = Object.keys(iconIndex); // Place icons in the icons bar
+                var iconKeys = Object.keys(iconIndex);
                 for (var i=0;i<iconKeys.length;i++) {
-                    var nel = document.createElement('div');
-                    var iel = document.createElement('img');
-                    iel.src = 'assets/icons/'+iconIndex[iconKeys[i]];
-                    nel.appendChild(iel);
-                    nel.title = iconKeys[i];
-                    document.getElementById('icon-area').appendChild(nel);
+                    $(
+                        '<img src="assets/icons/'+
+                        iconIndex[iconKeys[i]]+
+                        '">'
+                    ).appendTo($([
+                        '<div class="npc-icon" id="npc-icon-',
+                        iconKeys[i],
+                        '"></div>'
+                    ].join('')).appendTo($('#npc-icon-select')));
                 }
-                
 
                 // Fingerprint setup
                 
@@ -626,7 +635,6 @@
                 // Context menu manager
 
                 $(document).contextmenu(function(event,x,y){
-                    console.log(event.target);
                     var keys = Object.keys(ctxMenu);
                     for (var s=0;s<keys.length;s++){
                         var type = keys[s].charAt(0);
@@ -661,7 +669,6 @@
                         });
 
                         var children = $('#custom-ctx').children('*');
-                        console.log(sel,Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx')),uType == ctxMenu[sel][$(children[c]).attr('ctx')]);
                         for (var c=0; c<children.length; c++) {
                             if (Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx'))) {
                                 if (uType == ctxMenu[sel][$(children[c]).attr('ctx')]) {
@@ -732,31 +739,6 @@
                             alert('Error: '+data['reason']);
                         }
                     });
-                });
-
-                $('#btn-inc-size').click(function(){ // Increase icon size category
-                    var keys = Object.keys(sizes);
-                    if ($('#size-indicator').attr('name') != 'Gargantuan') {
-                        var nextSize = keys[keys.indexOf($('#size-indicator').attr('name'))+1];
-                        $('#size-indicator').attr('name',nextSize);
-                        if (nextSize.length > 6) {
-                            $('#size-indicator').text(nextSize.substring(0,5)+'.');
-                        } else {
-                            $('#size-indicator').text(nextSize);
-                        }
-                    }
-                });
-                $('#btn-dec-size').click(function(){ // Decrease icon size category
-                    var keys = Object.keys(sizes);
-                    if ($('#size-indicator').attr('name') != 'Tiny') {
-                        var nextSize = keys[keys.indexOf($('#size-indicator').attr('name'))-1];
-                        $('#size-indicator').attr('name',nextSize);
-                        if (nextSize.length > 6) {
-                            $('#size-indicator').text(nextSize.substring(0,5)+'.');
-                        } else {
-                            $('#size-indicator').text(nextSize);
-                        }
-                    }
                 });
 
                 $('#settings-submit').click(function(){ // Finish modifying settings
@@ -853,6 +835,52 @@
                     }
                 });
 
+                // NPC Maker
+                $('#npc-search').keyup(function(event){
+                    if ($('#npc-search').val().length > 0) {
+                        scmd('open5e',['monsters','search,'+$('#npc-search').val(),'limit,50'],function(data){
+                            if (data.code == 200) {
+                                var initialParse = JSON.parse(data.result);
+                                document.getElementById('search-results').innerHTML = '';
+                                for (var n=0;n<initialParse.data.length;n++) {
+                                    var point = initialParse.data[n];
+                                    var name = point.name;
+                                    var type = point.type
+                                    var hp = point.hit_points.toString();
+                                    var cr = point.challenge_rating;
+                                    var slug = point.slug;
+                                    $('<div class="npc-info-block"><span>'+[
+                                            'Name: <a href="https://open5e.com/monsters/'+slug+'" target="_blank">'+name+'</a>',
+                                            'Type: '+type,
+                                            'HP: '+hp,
+                                            'CR: '+cr
+                                        ].join('</span><span>')+'</span></div>')
+                                        .attr('data',JSON.stringify(point))
+                                        .click(function(event){
+                                            var data = JSON.parse($(event.delegateTarget).attr('data'));
+                                            $('#npc-name-inp').val(data.name);
+                                            $('#npc-hp-inp').val(data.hit_points);
+                                            $('.npc-icon').removeClass('selected');
+                                            if (data.type == 'dragon') {
+                                                $('#npc-icon-Dragon').toggleClass('selected',true);
+                                            } else if (data.name.toLowerCase().includes('mimic')) {
+                                                $('#npc-icon-Treasure').toggleClass('selected',true);
+                                            } else {
+                                                $('#npc-icon-Dice').toggleClass('selected',true);
+                                            }
+                                            npcData.data = data;
+                                        })
+                                        .appendTo($('#search-results'));
+                                }
+                            }
+                        });
+                    }
+                });
+                $('.npc-icon').click(function(event){
+                    $('.npc-icon').toggleClass('selected',false);
+                    $(event.delegateTarget).toggleClass('selected',true);
+                });
+
                 // Map Buttons
                 $('#remove-map').click(function(){
                     scmd('delete_map',[$('#maps-area .selected').attr('id')],refresh);
@@ -905,44 +933,6 @@
                     refresh();
                 });
 
-                // Zooming
-                /*$('#display-area').on('wheel',function(event){
-                    var topContainer = event.target.parentElement.parentElement;
-                    if (topContainer.classList.contains('map-container')) {
-                        var Dy = event.originalEvent.deltaY;
-                        var zoomMod = Number(topContainer.getAttribute('zoom'));
-                        if (Dy < 0) {
-                            zoomMod += 0.05;
-                        } else if (Dy > 0) {
-                            zoomMod -= 0.05;
-                        }
-                        topContainer.setAttribute('zoom',limit(zoomMod,0.1,2).toString());
-                        localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
-                        var dispArea = document.getElementById('display-area');
-                        var dispRect = dispArea.getBoundingClientRect();
-                        var topContainerRect = topContainer.getBoundingClientRect();
-
-                        var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
-                            dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
-                        localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
-                        var cid = null;
-                        for (var i=0;i<previousData.session.maps.length;i++) {
-                            if (previousData.session.maps[i].id==topContainer.id) {
-                                cid = i;
-                            }
-                        }
-
-                        $(topContainer).css({
-                            'width':(50*Number(previousData.session.maps[cid].grid_data.columns*localMapData[topContainer.id].zoom)).toString()+'px',
-                            'height':(50*Number(previousData.session.maps[cid].grid_data.rows*localMapData[topContainer.id].zoom)).toString()+'px',
-                            'top':localMapData[topContainer.id].pos[1].toString() + 'px',
-                            'left':localMapData[topContainer.id].pos[0].toString() + 'px',
-                            'cursor':cursor
-                        });
-                        refresh();
-                    }
-                });*/
-
                 // Refresh Loop
                 window.setInterval(function(){
                     command('gsi',{'sid':params.get('id')},1023,refresh);
@@ -984,8 +974,6 @@
                     $(document).click();
                 });
                 $('#ctx_add-pc').click(function(event){
-                    /*var cmp = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
-                    var mapData = JSON.parse($('#'+currentCtx).attr('data'));*/
                     var pos = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
                     var args = [
                         currentCtx,
@@ -1006,6 +994,17 @@
                         [$('#'+currentCtx).attr('mapId')],
                         console.log
                     );
+                    $(document).click();
+                });
+                $('#ctx_add-npc').click(function(event){
+                    var _pos = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
+                    var pos = [roundTo(_pos[0],50)/50,roundTo(_pos[1],50)/50];
+                    npcData.makingNPC = true;
+                    npcData.pos = pos;
+                    npcData.map = currentCtx;
+                    $('#npc-menu input').val('');
+                    $('#npc-menu').toggleClass('active',true);
+                    $('#modal-back').toggleClass('active',true);
                     $(document).click();
                 });
             });
@@ -1053,14 +1052,6 @@
                 <button id='settings' data-tooltip='Settings' data-tooltip-location="right"><img src="assets/settings.png"></button>
             </div>
         </div>
-        <div id='icons-bar' class='noscroll'>
-            <div id='icon-area' class='noscroll'></div>
-            <div id='icon-buttons'>
-                <button id='btn-inc-size'>+</button>
-                <p class='noselect' data-tooltip="Icon Size" data-tooltip-location="left" name='Medium' id='size-indicator'>Medium</p>
-                <button id='btn-dec-size'>-</button>
-            </div>
-        </div>
         
         <div id='display'>
             <div id='display-area'></div>
@@ -1100,6 +1091,8 @@
         </div>
 
         <!-- Large Dialogs -->
+
+        <!-- Settings -->
         <div id='settings-menu' class='large-dialog'>
             <h2>Settings</h2>
             <div class='block'>
@@ -1116,6 +1109,8 @@
             </div>
             <button class='submit-button' id='settings-submit'>Finish</button>
         </div>
+
+        <!-- Map manager -->
         <div id='manage-maps-menu' class="large-dialog">
             <h2>Manage Maps</h2>
             <div class='action-btns' id='map-actions'>
@@ -1132,6 +1127,27 @@
                 <button style="width: 100%;margin-top: 2vh;" id='load-map'>Load New Map</button>
             </div>
         </div>
+
+        <!-- NPC Maker -->
+        <div id='npc-menu' class="large-dialog">
+            <h2>NPC Maker</h2>
+            <div class='inline-block' id='search-bar'>
+                <h3 style="width: 20%;text-align:center;">NPC/Monster Search</h3>
+                <input style="width: 74%; text-align: center;" id="npc-search" placeholder="Search...">
+            </div>
+            <div class='inline-block' id='search-results'></div>
+            <div class='inline-block' id='mod-inputs'>
+                <h3 style="width: 10%;text-align:center;">Name</h3>
+                <input style="width: 36%; text-align: center;" id="npc-name-inp" placeholder="Name">
+                <h3 style="width: 10%;text-align:center;">Hit Points</h3>
+                <input style="width: 36%; text-align: center;" id="npc-hp-inp" placeholder="Hit Points" type="number">
+            </div>
+            <br>
+            <div id='npc-icon-select'></div>
+            <button class='submit-button' id='npc-submit'>Create NPC</button>
+        </div>
+
+        <!-- Multi-purpose selection box -->
         <div id='selection-box'></div>
     </body>
 </html>

@@ -8,5 +8,6 @@
     "remove_obscure":"dm",
     "activate_pc":"pc",
     "deactivate_pc":"pc",
-    "move_pc":"pc"
+    "move_pc":"pc",
+    "open5e":"pc,dm"
 }

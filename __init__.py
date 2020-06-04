@@ -138,6 +138,36 @@ class Session:
                     return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
 
+    def open5e(self,fp,args): 
+
+        '''
+        [Resource type (
+        spells, 
+        monsters, 
+        documents, 
+        backgrounds, 
+        planes, 
+        sections, 
+        feats, 
+        conditions, 
+        races, 
+        classes, 
+        magicitems, 
+        weapons, 
+        search
+        ), 
+        **kwargs in "key,value" arrangement]
+        '''
+        
+        restype = args.pop(0)
+        arguments = []
+        for a in args:
+            sp = a.split(',')
+            arguments.append(tuple(sp))
+        rs = 'get(restype,'+','.join([n[0]+'="'+n[1]+'"' for n in arguments])+')'
+        results = eval(rs)
+        return {'code':200,'result':json.dumps({'data':[i.json for i in results]})}
+
         
 
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets

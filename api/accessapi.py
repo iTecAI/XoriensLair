@@ -25,7 +25,8 @@ class Item:
                 setattr(self,d,dct[d])
 
 def get(resource_type,**terms):
-    terms['limit'] = 10000
+    if not 'limit' in terms.keys():
+        terms['limit'] = 10000
     response = requests.get('https://api.open5e.com/'+resource_type+'/',params=terms)
     jsondata = response.json()
     dat = []
