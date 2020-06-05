@@ -158,7 +158,7 @@ class Session:
         ), 
         **kwargs in "key,value" arrangement]
         '''
-        
+
         restype = args.pop(0)
         arguments = []
         for a in args:
@@ -167,6 +167,41 @@ class Session:
         rs = 'get(restype,'+','.join([n[0]+'="'+n[1]+'"' for n in arguments])+')'
         results = eval(rs)
         return {'code':200,'result':json.dumps({'data':[i.json for i in results]})}
+    
+    def add_npc(self,fp,args): # [Map ID, Icon, Data, X, Y]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                self.maps[i]['npcs'][sha256(str(time.time()*random()).encode('utf-8')).hexdigest()] = {
+                    'icon':args[1],
+                    'data':json.loads(args[2]),
+                    'pos':[int(args[3]),int(args[4])],
+                    'hp':int(json.loads(args[2])['hit_points'])
+                }
+                return {'code':200}
+        return {'code':404,'reason':'Map not found.'}
+
+    
+    def modify_npc(self,fp,args): # [Map ID, NPC ID, Data, Current HP, X, Y]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if args[1] in self.maps[i]['npcs'].keys():
+                    self.maps[i]['npcs'][args[1]]['data'] = args[2]
+                    self.maps[i]['npcs'][args[1]]['hp'] = args[3]
+                    self.maps[i]['npcs'][args[1]]['pos'] = [int(args[4]),int(args[5])]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'NPC not found.'}
+        return {'code':404,'reason':'Map not found.'}
+
+    def remove_npc(self,fp,args): # [Map ID, NPC ID]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if args[1] in self.maps[i]['npcs'].keys():
+                    del self.maps[i]['npcs'][args[1]]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'NPC not found.'}
+        return {'code':404,'reason':'Map not found.'}
 
         
 

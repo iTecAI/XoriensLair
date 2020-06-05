@@ -55,6 +55,9 @@
                 },
                 '.pc-icon':{
                     'remove-pc':'pc'
+                },
+                '.npc-icon':{
+                    'remove-npc':'dm'
                 }
             }; 
             var currentCtx = null; // Currently active context menu
@@ -63,7 +66,8 @@
                 makingNPC:false,
                 map:null,
                 pos:[0,0],
-                data:null
+                data:null,
+                icon:null
             };
 
             function limit(v,_min,_max) { // limit v to min & max
@@ -487,6 +491,90 @@
                                 });                                
                             }
 
+                            // Add active NPCs to the map
+                            for (var c=0;c<Object.keys(previousData.session.maps[m].npcs).length;c++) {
+                                var key = Object.keys(previousData.session.maps[m].npcs)[c];
+                                var id = Object.keys(previousData.session.maps[m].npcs)[c];
+                                console.log(previousData.session.maps[m].npcs[key]);
+                                if (typeof(previousData.session.maps[m].npcs[key].data) == "string") {
+                                    var data = JSON.parse(previousData.session.maps[m].npcs[key].data);
+                                } else {
+                                    var data = previousData.session.maps[m].npcs[key].data;
+                                }
+                                
+                                var name = data.name;
+                                var position = previousData.session.maps[m].npcs[key].pos;
+                                var icon = previousData.session.maps[m].npcs[key].icon;
+                                var size = data.size;
+                                if (!icon.includes('data')) {
+                                    icon = 'assets/icons/'+iconIndex[icon];
+                                }
+
+                                var npcElement = document.createElement('div');
+                                npcElement.id = id;
+                                npcElement.setAttribute('mapId',container.id);
+                                if (uType == 'dm') {
+                                    npcElement.title = 'Name: '+name+' | HP: '+previousData.session.maps[m].npcs[key].hp+'/'+data.hit_points+' | AC: '+data.armor_class;
+                                } else {
+                                    npcElement.title = name;
+                                }
+                                
+                                npcElement.className = 'npc-icon';
+                                npcElement.setAttribute('data',JSON.stringify(data));
+                                npcElement.setAttribute('current-hp',previousData.session.maps[m].npcs[key].hp);
+                                var npcImg = document.createElement('img');
+                                npcImg.src = icon;
+                                $(npcImg).on('contextmenu',function(event){
+                                    event.preventDefault();
+                                    $(event.target.parentElement).trigger('contextmenu',[event.pageX,event.pageY]);
+                                });
+                                npcElement.appendChild(npcImg);
+                                $(npcElement).css({
+                                    top:((Number(position[1])/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
+                                    left:((Number(position[0])/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
+                                    width:(((sizes[size]/Number(previousData.session.maps[m].grid_data.size))/Number(previousData.session.maps[m].grid_data['columns']))*100).toString()+'%',
+                                    height:(((sizes[size]/Number(previousData.session.maps[m].grid_data.size))/Number(previousData.session.maps[m].grid_data['rows']))*100).toString()+'%',
+                                    position:'absolute'
+                                });
+
+                                localContainer.appendChild(npcElement);
+
+                                // Drag & Drop
+                                if (cursor == 'move' && uType == 'dm') {
+                                    $(npcElement).draggable({
+                                        'disabled':false,
+                                        'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
+                                        'containment':'parent'
+                                    });
+                                } else {
+                                    $(npcElement).draggable({
+                                        'disabled':true
+                                    });
+                                }
+                                $(npcElement).on('dragstop',function(event){
+                                    var rect = event.target.getBoundingClientRect();
+                                    var pos = convertMouseToMapPos($(event.target).attr('mapId'),rect.left,rect.top);
+                                    var args = [
+                                        $(event.target).attr('mapId'),
+                                        $(event.target).attr('id'),
+                                        $(event.target).attr('data'),
+                                        $(event.target).attr('current-hp'),
+                                        Math.trunc(pos[0]/50),
+                                        Math.trunc(pos[1]/50)
+                                    ];
+                                    console.log(args);
+                                    scmd(
+                                        'modify_npc',
+                                        args,
+                                        function(data){
+                                            if (data.code == 200) {
+                                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                                            }
+                                        }
+                                    );
+                                });                           
+                            }
+                            
                             displayArea.appendChild(container);
 
                             // Drag & Drop code from JQuery UI
@@ -501,7 +589,7 @@
                                 }).appendTo(container).css('position','absolute');
                             }
                             $(container).on('dragstop',function(event){
-                                if (event.target.classList.contains('pc-icon')) {
+                                if (event.target.classList.contains('pc-icon')||event.target.classList.contains('npc-icon')) {
                                     return;
                                 }
                                 var rect = event.target.getBoundingClientRect();
@@ -573,7 +661,9 @@
                     ).appendTo($([
                         '<div class="npc-icon" id="npc-icon-',
                         iconKeys[i],
-                        '"></div>'
+                        '" name="',
+                        iconKeys[i]
+                        ,'"></div>'
                     ].join('')).appendTo($('#npc-icon-select')));
                 }
 
@@ -880,6 +970,19 @@
                     $('.npc-icon').toggleClass('selected',false);
                     $(event.delegateTarget).toggleClass('selected',true);
                 });
+                $('#npc-submit').click(function(event){
+                    $('#modal-back').click();
+                    npcData.data.name = $('#npc-name-inp').val();
+                    npcData.data.hit_points = Number($('#npc-hp-inp').val());
+                    npcData.makingNPC = false;
+                    scmd('add_npc',[
+                        npcData.map,
+                        $('.npc-icon.selected')[0].getAttribute('name'),
+                        JSON.stringify(npcData.data),
+                        npcData.pos[0],
+                        npcData.pos[1]
+                    ],console.log);
+                });
 
                 // Map Buttons
                 $('#remove-map').click(function(){
@@ -1007,6 +1110,14 @@
                     $('#modal-back').toggleClass('active',true);
                     $(document).click();
                 });
+                $('#ctx_remove-npc').click(function(event){
+                    scmd(
+                        'remove_npc',
+                        [$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                        console.log
+                    );
+                    $(document).click();
+                });
             });
 
 
@@ -1025,6 +1136,7 @@
             <button class='ctx-button' id='ctx_add-pc' ctx='add-pc'>Add Player Character</button>
             <button class='ctx-button' id='ctx_add-npc' ctx='add-npc'>Add NPC</button>
             <button class='ctx-button' id='ctx_remove-pc' ctx='remove-pc'>Close Player Character</button>
+            <button class='ctx-button' id='ctx_remove-npc' ctx='remove-npc'>Remove NPC</button>
         </div>
 
         <div id='cursors-bar'>

@@ -9,5 +9,8 @@
     "activate_pc":"pc",
     "deactivate_pc":"pc",
     "move_pc":"pc",
-    "open5e":"pc,dm"
+    "open5e":"pc,dm",
+    "add_npc":"dm",
+    "modify_npc":"dm",
+    "remove_npc":"dm"
 }
