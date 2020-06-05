@@ -422,6 +422,7 @@ html {
     position: absolute;
     background-color: white;
     border-radius: 50%;
+    overflow: hidden;
 }
 
 .pc-icon img, .npc-icon img {
@@ -504,6 +505,7 @@ html {
     margin-left: 10px;
     border-radius: 50%;
     background-color: rgb(215, 215, 216);
+    overflow: hidden;
 }
 
 #npc-icon-select div:hover {

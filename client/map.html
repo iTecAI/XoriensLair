@@ -506,10 +506,10 @@
                                 var position = previousData.session.maps[m].npcs[key].pos;
                                 var icon = previousData.session.maps[m].npcs[key].icon;
                                 var size = data.size;
-                                if (!icon.includes('data')) {
+                                if (!icon.includes('data') && !icon.includes('/')) {
                                     icon = 'assets/icons/'+iconIndex[icon];
                                 }
-
+                                console.log(icon);
                                 var npcElement = document.createElement('div');
                                 npcElement.id = id;
                                 npcElement.setAttribute('mapId',container.id);
@@ -951,12 +951,19 @@
                                             $('#npc-name-inp').val(data.name);
                                             $('#npc-hp-inp').val(data.hit_points);
                                             $('.npc-icon').removeClass('selected');
-                                            if (data.type == 'dragon') {
+                                            if (data.img_main) {
+                                                $('#npc-icon-open5e').toggleClass('selected',true);
+                                                $('#npc-icon-open5e img').attr('src',data.img_main);
+                                                $('#npc-icon-open5e').css('display','inline-block');
+                                            } else if (data.type == 'dragon') {
                                                 $('#npc-icon-Dragon').toggleClass('selected',true);
+                                                $('#npc-icon-open5e').css('display','none');
                                             } else if (data.name.toLowerCase().includes('mimic')) {
                                                 $('#npc-icon-Treasure').toggleClass('selected',true);
+                                                $('#npc-icon-open5e').css('display','none');
                                             } else {
                                                 $('#npc-icon-Dice').toggleClass('selected',true);
+                                                $('#npc-icon-open5e').css('display','none');
                                             }
                                             npcData.data = data;
                                         })
@@ -975,9 +982,16 @@
                     npcData.data.name = $('#npc-name-inp').val();
                     npcData.data.hit_points = Number($('#npc-hp-inp').val());
                     npcData.makingNPC = false;
+
+                    if ($('.npc-icon.selected')[0].getAttribute('name') == 'open5e') {
+                        icon = $('.npc-icon.selected img')[0].getAttribute('src');
+                    } else {
+                        icon = $('.npc-icon.selected')[0].getAttribute('name');
+                    }
+
                     scmd('add_npc',[
                         npcData.map,
-                        $('.npc-icon.selected')[0].getAttribute('name'),
+                        icon,
                         JSON.stringify(npcData.data),
                         npcData.pos[0],
                         npcData.pos[1]
@@ -1255,7 +1269,9 @@
                 <input style="width: 36%; text-align: center;" id="npc-hp-inp" placeholder="Hit Points" type="number">
             </div>
             <br>
-            <div id='npc-icon-select'></div>
+            <div id='npc-icon-select'>
+                <div class="npc-icon" id="npc-icon-open5e" name="open5e" style="display: none;"><img src="assets/icons/Dice.png"></div>
+            </div>
             <button class='submit-button' id='npc-submit'>Create NPC</button>
         </div>
 
