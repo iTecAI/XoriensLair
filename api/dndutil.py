@@ -54,3 +54,41 @@ def roll(rollstr,adv=0):
                 v = random.randint(0,int(rs[1]))
                 val += v
             return val+mod
+
+def getmod(score):
+    score = int(score)
+    if score > 0 and score < 31:
+        return [
+            -5,
+            -4,
+            -4,
+            -3,
+            -3,
+            -2,
+            -2,
+            -1,
+            -1,
+            0,
+            0,
+            1,
+            1,
+            2,
+            2,
+            3,
+            3,
+            4,
+            4,
+            5,
+            5,
+            6,
+            6,
+            7,
+            7,
+            8,
+            8,
+            9,
+            9,
+            10
+        ][score-1]
+    else:
+        return 0

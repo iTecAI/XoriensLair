@@ -1,5 +1,3 @@
-import pygame
-
 def drawText(surface, text, color, rect, font, aa=False, bkg=None): #text wrapping function from https://www.pygame.org/wiki/TextWrap
     rect = pygame.Rect(rect)
     y = rect.top

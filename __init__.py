@@ -5,16 +5,16 @@ import json
 import datetime, time
 from threading import Thread
 from hashlib import sha256
-from random import  random
+from random import random,randint
 
 # options
-IP = '192.168.86.36'
+IP = '192.168.89.129'
 S_PORT = 1022
 A_PORT = 1023
 DIR = os.path.join(os.getcwd(),'client/')
 
 class Session:
-    def __init__(self,session=None):
+    def __init__(self,instance,session=None):
         if session:
             print(session)
             session = json.loads(session)
@@ -23,6 +23,14 @@ class Session:
         else:
             self.maps = []
             self.characters = {}
+        
+        self.initiative_data = {
+            'active':False,
+            'order':{},
+            'rolls':[],
+            'index':0
+        }
+        self.instance = instance
 
     def jsonify(self):
         ndct = {}
@@ -31,7 +39,8 @@ class Session:
 
         return {
             'maps':self.maps,
-            'characters':ndct
+            'characters':ndct,
+            'initiative':self.initiative_data
         }
     
     def save(self,fp,args): # No arguments
@@ -202,6 +211,75 @@ class Session:
                 else:
                     return {'code':404,'reason':'NPC not found.'}
         return {'code':404,'reason':'Map not found.'}
+    
+    def initiative(self,fp,args): # [Command, Map ID, NPC ID if applicable (otherwise -1)]
+        code, dat = self.instance.check_user({'fingerprint':fp})
+
+        if args[0] == 'roll':
+            if dat['type'] == 'pc':
+                roll = randint(1,20)+int(self.characters[fp]['skills']['initiative']['value'])+(random()/10)
+                data = json.dumps(self.characters[fp])
+                ID = fp
+            else:
+                index = -1
+                for i in range(len(self.maps)):
+                    if self.maps[i]['id'] == args[1]:
+                        index = i
+                if index >= 0:
+                    npc = self.maps[index]['npcs'][args[2]]['data']
+                    data = json.dumps(self.maps[index]['npcs'][args[2]]['data'])
+                    roll = randint(1,20)+getmod(int(npc['dexterity']))+(random()/10)
+                    ID = args[2]
+                else:
+                    return {'code':404,'reason':'Map not found'}
+            
+            self.initiative_data['rolls'].append(roll)
+            self.initiative_data['rolls'].sort(reverse=True)
+            self.initiative_data['order'][roll] = {
+                'type':dat['type'],
+                'data':data,
+                'id':ID
+            }
+            self.initiative_data['active'] = True
+            return {'code':200,'roll':int(roll),'place':self.initiative_data['rolls'].index(roll)}
+        elif args[0] == 'check':
+            return {'code':200,'data':self.initiative_data['rolls']}
+        elif args[0] == 'remove':
+            if dat['type'] == 'pc':
+                to_delete = None
+                for k in self.initiative_data['order'].keys():
+                    if self.initiative_data['order'][k]['id'] == fp:
+                        to_delete = k
+                if to_delete != None:
+                    del self.initiative_data['order'][to_delete]
+                    self.initiative_data['rolls'].remove(to_delete)
+            else:
+                to_delete = None
+                for k in self.initiative_data['order'].keys():
+                    if self.initiative_data['order'][k]['id'] == args[2]:
+                        to_delete = k
+                if to_delete != None:
+                    del self.initiative_data['order'][to_delete]
+                    self.initiative_data['rolls'].remove(to_delete)
+            return {'code':200}
+        elif args[0] == 'next' and dat['type'] == 'dm':
+            self.initiative_data['index'] += 1
+            if self.initiative_data['index'] >= len(self.initiative_data['rolls']):
+                self.initiative_data['index'] = 0
+            return {'code':200,'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]}
+        elif args[0] == 'end' and dat['type'] == 'dm':
+            self.initiative_data = {
+                'active':False,
+                'order':{},
+                'rolls':[],
+                'index':0
+            }
+            return {'code':200}
+        return {'code':404,'reason':'Command not found or forbidden'}
+        
+
+
+        
 
         
 
@@ -220,7 +298,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(session=data['session']),
+                'instance':Session(self,session=data['session']),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {
@@ -234,7 +312,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(),
+                'instance':Session(self),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {

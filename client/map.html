@@ -46,18 +46,23 @@
             }; // Obscure info maintain
             var ctxMenu = { // Selectors to activate custom context menu on
                 '#display-area':{
-
+                    'end-initiative':'dm'
                 },
                 '.map-container':{
                     'map-close':'dm',
                     'add-pc':'pc',
-                    'add-npc':'dm'
+                    'add-npc':'dm',
+                    'end-initiative':'dm'
                 },
                 '.pc-icon':{
-                    'remove-pc':'pc'
+                    'remove-pc':'pc',
+                    'run-initiative':'pc',
+                    'remove-initiative':'pc'
                 },
                 '.npc-icon':{
-                    'remove-npc':'dm'
+                    'remove-npc':'dm',
+                    'run-initiative':'dm',
+                    'remove-initiative':'dm'
                 }
             }; 
             var currentCtx = null; // Currently active context menu
@@ -296,7 +301,7 @@
                                     }
 
                                     $('#selection-box').css({
-                                        top:(top-2).toString()+'px',
+                                        top:(top-2).toString()+'pfx',
                                         left:(left-2).toString()+'px',
                                         width:width.toString()+'px',
                                         height:height.toString()+'px'
@@ -1132,6 +1137,22 @@
                     );
                     $(document).click();
                 });
+                $('#ctx_run-initiative').click(function(event){
+                    if ($('#'+currentCtx).hasClass('npc-icon')) {
+                        scmd(
+                            'initiative',
+                            ['roll',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                            console.log
+                        );
+                    } else {
+                        scmd(
+                            'initiative',
+                            ['roll',$('#'+currentCtx).attr('mapId'),-1],
+                            console.log
+                        );
+                    }
+                    $(document).click();
+                });
             });
 
 
@@ -1151,6 +1172,9 @@
             <button class='ctx-button' id='ctx_add-npc' ctx='add-npc'>Add NPC</button>
             <button class='ctx-button' id='ctx_remove-pc' ctx='remove-pc'>Close Player Character</button>
             <button class='ctx-button' id='ctx_remove-npc' ctx='remove-npc'>Remove NPC</button>
+            <button class='ctx-button' id='ctx_run-initiative' ctx='run-initiative'>Roll Initiative</button>
+            <button class='ctx-button' id='ctx_remove-initiative' ctx='remove-initiative'>Remove From Initiative</button>
+            <button class='ctx-button' id='ctx_end-initiative' ctx='end-initiative'>End Initiative</button>
         </div>
 
         <div id='cursors-bar'>

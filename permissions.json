@@ -12,5 +12,6 @@
     "open5e":"pc,dm",
     "add_npc":"dm",
     "modify_npc":"dm",
-    "remove_npc":"dm"
+    "remove_npc":"dm",
+    "initiative":"pc,dm"
 }

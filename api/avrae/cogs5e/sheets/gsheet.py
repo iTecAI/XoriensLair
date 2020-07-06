@@ -270,7 +270,7 @@ class GoogleSheet(SheetLoaderABC):
     # calculator functions
     def get_xp(self):
         try:
-            return int(self.character_data.value("AE7"))
+            return int(''.join([i for i in self.character_data.value("AE7") if i in '0123456789']))
         except (TypeError, ValueError):
             raise MissingAttribute("AC")
 
