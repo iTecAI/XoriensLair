@@ -27,7 +27,7 @@ from api.avrae.utils.functions import search
 
 log = logging.getLogger(__name__)
 
-API_BASE = "https://www.dndbeyond.com/character/"
+API_BASE = "https://character-service.dndbeyond.com/character/v3/character/"
 DAMAGE_TYPES = {1: "bludgeoning", 2: "piercing", 3: "slashing", 4: "necrotic", 5: "acid", 6: "cold", 7: "fire",
                 8: "lightning", 9: "thunder", 10: "poison", 11: "psychic", 12: "radiant", 13: "force"}
 CASTER_TYPES = {"Barbarian": 0, "Bard": 1, "Cleric": 1, "Druid": 1, "Fighter": 0.333, "Monk": 0, "Paladin": 0.5,
@@ -132,7 +132,7 @@ class BeyondSheetParser(SheetLoaderABC):
     def get_character(self):
         charId = self.url
         character = None
-        r = requests.get(f"{API_BASE}{charId}/json",headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'})
+        r = requests.get(f"{API_BASE}{charId}",headers={'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36'})
         character = r.json()
         #character = eval(character)
         character['_id'] = charId

@@ -127,5 +127,41 @@
                 }
             }
         }
+    },
+    "searing-smite":{
+        "cast":"bonus",
+        "type":"attackModifier",
+        "range":"self",
+        "duration":10,
+        "effects":{
+            "attackModifier":{
+                "type":"melee",
+                "limit":1,
+                "effectsList":[
+                    "instantaneous",
+                    "recurringSave"
+                ],
+                "effects":{
+                    "instantaneous":{
+                        "type":"damage",
+                        "damage":["1d6","fire"]
+                    },
+                    "recurringSave":{
+                        "time":"start",
+                        "save":"con",
+                        "pass":{
+                            "type":"command",
+                            "command":"endSpell"
+                        },
+                        "fail":{
+                            "type":"damage",
+                            "damage":["1d6","fire"]
+                        }
+                    }
+                }
+
+            }
+
+        }
     }
 }

@@ -1077,6 +1077,13 @@
                     $('#session-name-set').val(previousData.name);
                     $('#settings-menu').toggleClass('active',true);
                 });
+                $('#adv-init').click(function(){
+                    scmd(
+                        'initiative',
+                        ['next',$('#'+currentCtx).attr('mapId'),-1],
+                        console.log
+                    );
+                })
                 $('#manage-maps').click(function(){
                     $('#modal-back').toggleClass('active',true);
                     $('#manage-maps-menu').toggleClass('active',true);
@@ -1153,6 +1160,22 @@
                     }
                     $(document).click();
                 });
+                $('#ctx_remove-initiative').click(function(event){
+                    if ($('#'+currentCtx).hasClass('npc-icon')) {
+                        scmd(
+                            'initiative',
+                            ['remove',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                            console.log
+                        );
+                    } else {
+                        scmd(
+                            'initiative',
+                            ['remove',$('#'+currentCtx).attr('mapId'),-1],
+                            console.log
+                        );
+                    }
+                    $(document).click();
+                });
             });
 
 
@@ -1200,6 +1223,7 @@
                 <button id='manage-maps' data-tooltip='Manage Maps' data-tooltip-location="right"><img src="assets/map.png"></button>
                 <input id='load-map-file' style='display: none;' type="file">
                 <button id='settings' data-tooltip='Settings' data-tooltip-location="right"><img src="assets/settings.png"></button>
+                <button id='adv-init' data-tooltip='Advance Initiative' data-tooltip-location="right"><img src="assets/next.png"></button>
             </div>
         </div>
         
@@ -1224,6 +1248,7 @@
             <p>Basic Cursor Icon: <a href="https://icon54.com/" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Move Cursor Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Obscuration Cursor Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Advance Initiative Icon: <a href="https://www.flaticon.com/authors/pixel-perfect" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->

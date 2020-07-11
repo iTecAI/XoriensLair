@@ -8,7 +8,7 @@ from hashlib import sha256
 from random import random,randint
 
 # options
-IP = '192.168.89.129'
+IP = 'localhost'
 S_PORT = 1022
 A_PORT = 1023
 DIR = os.path.join(os.getcwd(),'client/')
@@ -226,6 +226,8 @@ class Session:
                     if self.maps[i]['id'] == args[1]:
                         index = i
                 if index >= 0:
+                    with open('log.json','w') as f:
+                        json.dump(self.maps,f)
                     npc = self.maps[index]['npcs'][args[2]]['data']
                     data = json.dumps(self.maps[index]['npcs'][args[2]]['data'])
                     roll = randint(1,20)+getmod(int(npc['dexterity']))+(random()/10)
@@ -261,7 +263,7 @@ class Session:
                 if to_delete != None:
                     del self.initiative_data['order'][to_delete]
                     self.initiative_data['rolls'].remove(to_delete)
-            return {'code':200}
+            return {'code':200,'data':self.initiative_data['rolls']}
         elif args[0] == 'next' and dat['type'] == 'dm':
             self.initiative_data['index'] += 1
             if self.initiative_data['index'] >= len(self.initiative_data['rolls']):
