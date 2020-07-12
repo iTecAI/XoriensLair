@@ -175,19 +175,20 @@
                 if (data == undefined) {
                     data = {'code':200};
                 }
-                if (data.session.initiative.active) {
-                    $('#adv-init').show();
-                    $('#adv-stop').show();
-                } else {
-                    $('#adv-init').hide();
-                    $('#adv-stop').hide();
-                }
 
                 if ((JSON.stringify(data) != JSON.stringify(previousData) && data.code == 200)) {
                     if (Object.keys(data).length <= 1) {
                         data = previousData;
                     }
                     previousData = data;
+
+                    if (data.session.initiative.active) {
+                        $('#adv-init').show();
+                        $('#adv-stop').show();
+                    } else {
+                        $('#adv-init').hide();
+                        $('#adv-stop').hide();
+                    }
 
                     // Update player listing
                     var elbox = document.getElementById('user-area');
@@ -280,6 +281,7 @@
                                 obscureInfo.pageXS = event.pageX;
                                 obscureInfo.pageYS = event.pageY;
                                 obscureInfo.obscuring = true;
+                                console.log(obscureInfo);
                                 $('#selection-box').css({
                                     top:'0px',
                                     left:'0px',
@@ -309,38 +311,10 @@
                                     }
 
                                     $('#selection-box').css({
-                                        top:(top-2).toString()+'pfx',
-                                        left:(left-2).toString()+'px',
-                                        width:width.toString()+'px',
-                                        height:height.toString()+'px'
-                                    });
-                                }
-                            });
-                            $('#selection-box').mousemove(function(event){ // Show obscure selection
-                                var target = event.delegateTarget;
-                                if (obscureInfo.obscuring && target.id == 'selection-box') {
-                                    if (event.pageX >= obscureInfo.pageXS) {
-                                        var left = obscureInfo.pageXS;
-                                        var width = event.pageX - left;
-                                    } else {
-                                        var left = event.pageX;
-                                        var width = obscureInfo.pageXS - left;
-                                    }
-
-                                    if (event.pageY >= obscureInfo.pageYS) {
-                                        var top = obscureInfo.pageYS;
-                                        var height = event.pageY - top;
-                                    } else {
-                                        var top = event.pageY;
-                                        var height = obscureInfo.pageYS - top;
-                                    }
-
-                                    $('#selection-box').css({
                                         top:(top-2).toString()+'px',
                                         left:(left-2).toString()+'px',
                                         width:width.toString()+'px',
-                                        height:height.toString()+'px',
-                                        cursor:cursor
+                                        height:height.toString()+'px'
                                     });
                                 }
                             });
