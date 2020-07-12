@@ -175,6 +175,14 @@
                 if (data == undefined) {
                     data = {'code':200};
                 }
+                if (data.session.initiative.active) {
+                    $('#adv-init').show();
+                    $('#adv-stop').show();
+                } else {
+                    $('#adv-init').hide();
+                    $('#adv-stop').hide();
+                }
+
                 if ((JSON.stringify(data) != JSON.stringify(previousData) && data.code == 200)) {
                     if (Object.keys(data).length <= 1) {
                         data = previousData;
@@ -1083,7 +1091,17 @@
                         ['next',$('#'+currentCtx).attr('mapId'),-1],
                         console.log
                     );
-                })
+                });
+                $('#adv-stop').click(function(){
+                    scmd(
+                        'initiative',
+                        ['end',$('#'+currentCtx).attr('mapId'),-1],
+                        function(data) {
+                            console.log(data);
+                            alert('Initiative ended.');
+                        }
+                    );
+                });
                 $('#manage-maps').click(function(){
                     $('#modal-back').toggleClass('active',true);
                     $('#manage-maps-menu').toggleClass('active',true);
@@ -1144,6 +1162,7 @@
                     );
                     $(document).click();
                 });
+                
                 $('#ctx_run-initiative').click(function(event){
                     if ($('#'+currentCtx).hasClass('npc-icon')) {
                         scmd(
@@ -1224,6 +1243,7 @@
                 <input id='load-map-file' style='display: none;' type="file">
                 <button id='settings' data-tooltip='Settings' data-tooltip-location="right"><img src="assets/settings.png"></button>
                 <button id='adv-init' data-tooltip='Advance Initiative' data-tooltip-location="right"><img src="assets/next.png"></button>
+                <button id='adv-stop' data-tooltip='End Initiative' data-tooltip-location="right"><img src="assets/stop.png"></button>
             </div>
         </div>
         
@@ -1249,6 +1269,7 @@
             <p>Move Cursor Icon: <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Obscuration Cursor Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Advance Initiative Icon: <a href="https://www.flaticon.com/authors/pixel-perfect" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>End Initiative Icon: <a href="https://www.flaticon.com/free-icon/no-stopping_803294" title="Those Icons">Those Icons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->

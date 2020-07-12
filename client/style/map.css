@@ -190,7 +190,7 @@ html {
 
 .user-buttons {
     position: absolute;
-    height: 20vh;
+    height: fit-content;
     width: 5vw;
     bottom: 0px;
     left: 0px;
