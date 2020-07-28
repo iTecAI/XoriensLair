@@ -28,14 +28,15 @@ class Session:
             'active':False,
             'order':{},
             'rolls':[],
-            'index':0
+            'index':0,
+            'next':None
         }
         self.instance = instance
 
     def jsonify(self):
         ndct = {}
         for k in self.characters.keys():
-            ndct[k] = json.loads(self.characters[k].to_json())
+            ndct[k] = self.characters[k]
 
         return {
             'maps':self.maps,
@@ -188,8 +189,7 @@ class Session:
                 }
                 return {'code':200}
         return {'code':404,'reason':'Map not found.'}
-
-    
+  
     def modify_npc(self,fp,args): # [Map ID, NPC ID, Data, Current HP, X, Y]
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
@@ -218,8 +218,18 @@ class Session:
         if args[0] == 'roll':
             if dat['type'] == 'pc':
                 roll = randint(1,20)+int(self.characters[fp]['skills']['initiative']['value'])+(random()/10)
-                data = json.dumps(self.characters[fp])
+                data = self.characters[fp]
                 ID = fp
+                index = -1
+                for i in range(len(self.maps)):
+                    if self.maps[i]['id'] == args[1]:
+                        index = i
+                if index >= 0:
+                    name = self.characters[fp]['name']
+                    icon = self.maps[index]['characters'][fp]['icon']
+                else:
+                    return {'code':404,'reason':'Map not found'}
+                
             else:
                 index = -1
                 for i in range(len(self.maps)):
@@ -228,7 +238,9 @@ class Session:
                 if index >= 0:
                     with open('log.json','w') as f:
                         json.dump(self.maps,f)
-                    npc = self.maps[index]['npcs'][args[2]]['data']
+                    npc = json.loads(self.maps[index]['npcs'][args[2]]['data'])
+                    name = npc['name']
+                    icon = self.maps[index]['npcs'][args[2]]['icon']
                     data = json.dumps(self.maps[index]['npcs'][args[2]]['data'])
                     roll = randint(1,20)+getmod(int(npc['dexterity']))+(random()/10)
                     ID = args[2]
@@ -240,12 +252,33 @@ class Session:
             self.initiative_data['order'][roll] = {
                 'type':dat['type'],
                 'data':data,
-                'id':ID
+                'id':ID,
+                'icon':icon,
+                'name':name
             }
             self.initiative_data['active'] = True
             return {'code':200,'roll':int(roll),'place':self.initiative_data['rolls'].index(roll)}
         elif args[0] == 'check':
-            return {'code':200,'data':self.initiative_data['rolls']}
+            if len(self.initiative_data['rolls']) == 0 or self.initiative_data['active'] == False:
+                self.initiative_data['active'] = False
+                return {
+                    'code':200,
+                    'current':{},
+                    'next':{}
+                }
+
+            try:
+                return {
+                    'code':200,
+                    'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]],
+                    'next':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']+1]]
+                    }
+            except IndexError:
+                return {
+                    'code':200,
+                    'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]],
+                    'next':self.initiative_data['order'][self.initiative_data['rolls'][0]]
+                    }
         elif args[0] == 'remove':
             if dat['type'] == 'pc':
                 to_delete = None

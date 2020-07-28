@@ -120,7 +120,7 @@ html {
     background-color: rgb(50, 46, 61);
     left: 0px;
     bottom: 0px;
-    box-shadow: 2px 9px 8px 4px rgb(146, 146, 146);
+    box-shadow: 2px 9px 8px 2px rgb(59, 59, 59);
     z-index: 501;
 }
 
@@ -536,4 +536,30 @@ html {
 }
 #npc-icon-select::-webkit-scrollbar-thumb:hover {
     background-color: rgb(28, 26, 34); 
+}
+
+#initiative-box {
+    position: absolute;
+    bottom: 0px;
+    left: 5vw;
+    height: 50px;
+    width: 200px;
+    background-color: rgb(50, 46, 61);
+    z-index: 1000;
+    border-top-right-radius: 5px;
+}
+
+#initiative-box > * {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    margin: 0px 6px 0px 6px;
+}
+
+#initiative-box > * img {
+    width: 40px;
+    height: 40px;
+    margin-left: 5px;
+    margin-top: 5px;
+    z-index: 1500;
 }

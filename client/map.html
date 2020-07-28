@@ -129,6 +129,16 @@
 
             var localMapData = {};
 
+            function getIcon(path) {
+                if (Object.keys(iconIndex).includes(path)) {
+                    console.log('assets/icons/'+iconIndex[path]);
+                    return 'assets/icons/'+iconIndex[path];
+                } else {
+                    console.log(path)
+                    return path;
+                }
+            }
+
             function doMapImageClick(event) {
                 var e = event.target;
                 if ($(e).hasClass('selected')) {
@@ -185,10 +195,23 @@
                     if (data.session.initiative.active) {
                         $('#adv-init').show();
                         $('#adv-stop').show();
+                        $('#initiative-box').show();
                     } else {
                         $('#adv-init').hide();
                         $('#adv-stop').hide();
+                        $('#initiative-box').hide();
                     }
+
+                    scmd(
+                        'initiative',
+                        ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                        function(data){
+                            $('#ci-img').attr('src',getIcon(data.current.icon));
+                            $('#ni-img').attr('src',getIcon(data.next.icon));
+                            $('#current-init').attr('data-tooltip',data.current.name);
+                            $('#next-init').attr('data-tooltip',data.next.name);
+                        }
+                    );
 
                     // Update player listing
                     var elbox = document.getElementById('user-area');
@@ -1065,6 +1088,13 @@
                         ['next',$('#'+currentCtx).attr('mapId'),-1],
                         console.log
                     );
+                    scmd(
+                        'initiative',
+                        ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                        function(data){
+                            $('#ci-img').attr('src',getIcon(data.current.data.icon));
+                        }
+                    );
                 });
                 $('#adv-stop').click(function(){
                     scmd(
@@ -1152,6 +1182,16 @@
                         );
                     }
                     $(document).click();
+                    scmd(
+                        'initiative',
+                        ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                        function(data){
+                            $('#ci-img').attr('src',getIcon(data.current.icon));
+                            $('#ni-img').attr('src',getIcon(data.next.icon));
+                            $('#current-init').attr('data-tooltip',data.current.name);
+                            $('#next-init').attr('data-tooltip',data.next.name);
+                        }
+                    );
                 });
                 $('#ctx_remove-initiative').click(function(event){
                     if ($('#'+currentCtx).hasClass('npc-icon')) {
@@ -1168,6 +1208,16 @@
                         );
                     }
                     $(document).click();
+                    scmd(
+                        'initiative',
+                        ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+                        function(data){
+                            $('#ci-img').attr('src',getIcon(data.current.icon));
+                            $('#ni-img').attr('src',getIcon(data.next.icon));
+                            $('#current-init').attr('data-tooltip',data.current.name);
+                            $('#next-init').attr('data-tooltip',data.next.name);
+                        }
+                    );
                 });
             });
 
@@ -1321,5 +1371,12 @@
 
         <!-- Multi-purpose selection box -->
         <div id='selection-box'></div>
+
+        <!-- Initiative Display Box -->
+        <div id='initiative-box'>
+            <div id='current-init'><img id='ci-img' src="" data-tooltip=''></div>
+            <div id='next-arrow'><img src="assets/next.png"></div>
+            <div id='next-init'><img id='ni-img' src="" data-tooltip=''></div>
+        </div>
     </body>
 </html>
