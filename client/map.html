@@ -618,7 +618,7 @@
                                     'postion':'absolute'
                                 });
                                 localMapData[event.delegateTarget.id].pos = position;
-                                console.log(localMapData);
+                                console.log(position);
                             });
 
                             $(container).on('wheel',function(event){
@@ -627,18 +627,31 @@
                                 var zoomMod = Number(topContainer.getAttribute('zoom'));
                                 if (Dy < 0) {
                                     zoomMod += 0.05;
+                                    var zoomDelta = 1.05;
                                 } else if (Dy > 0) {
                                     zoomMod -= 0.05;
+                                    var zoomDelta = 0.95;
                                 }
+                                
                                 topContainer.setAttribute('zoom',limit(zoomMod,0.1,2).toString());
                                 localMapData[topContainer.id].zoom = limit(zoomMod,0.1,5);
                                 var dispArea = document.getElementById('display-area');
                                 var dispRect = dispArea.getBoundingClientRect();
                                 var topContainerRect = topContainer.getBoundingClientRect();
+                                topContainerRect.x = localMapData[topContainer.id].pos[0];
+                                topContainerRect.y = localMapData[topContainer.id].pos[1];
+                                console.log(topContainerRect);
+                                console.log(event.pageX-dispRect.x,event.pageY-dispRect.y);
 
-                                var dx = ((event.pageX-dispArea.clientLeft) - topContainer.clientLeft) * (zoomMod-1);
-                                    dy = ((event.pageY-dispArea.clientTop) - topContainer.clientTop) * (zoomMod-1);
-                                localMapData[topContainer.id].pos = [topContainer.clientLeft - dx,topContainer.clientTop - dy];
+                                var originDelta = [
+                                    (event.pageX - dispRect.x - topContainerRect.x),
+                                    (event.pageY - dispRect.y - topContainerRect.y)
+                                ];
+                                var dx = Math.trunc((event.pageX-dispRect.x) - topContainerRect.x) * (zoomMod-1);
+                                    dy = Math.trunc((event.pageY-dispRect.y) - topContainerRect.y) * (zoomMod-1);
+                                console.log(dx,dy);
+                                localMapData[topContainer.id].pos = [(event.pageX-dispRect.x) - originDelta[0]*zoomDelta,(event.pageY-dispRect.y) - originDelta[1]*zoomDelta];
+                                //localMapData[topContainer.id].pos = newpos;
                                 var cid = null;
                                 for (var i=0;i<previousData.session.maps.length;i++) {
                                     if (previousData.session.maps[i].id==topContainer.id) {
@@ -655,6 +668,8 @@
                                     'position':'absolute'
                                 });
                                 refresh();
+
+
                             });
 
                             
