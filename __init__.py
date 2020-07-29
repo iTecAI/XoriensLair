@@ -147,6 +147,16 @@ class Session:
                 else:
                     return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
+    
+    def deactivate_pc_dm(self,fp,args): # [Map ID]
+        for i in range(len(self.maps)):
+            if self.maps[i]['id'] == args[0]:
+                if args[1] in self.maps[i]['characters'].keys():
+                    del self.maps[i]['characters'][args[1]]
+                    return {'code':200}
+                else:
+                    return {'code':404,'reason':'Character not found.'}
+        return {'code':404,'reason':'Map not found.'}
 
     def open5e(self,fp,args): 
 

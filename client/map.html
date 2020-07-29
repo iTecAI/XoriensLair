@@ -56,6 +56,7 @@
                 },
                 '.pc-icon':{
                     'remove-pc':'pc',
+                    'remove-pc-dm':'dm',
                     'run-initiative':'pc',
                     'remove-initiative':'pc'
                 },
@@ -1147,6 +1148,15 @@
                     );
                     $(document).click();
                 });
+                $('#ctx_remove-pc-dm').click(function(event){
+                    console.log(currentCtx);
+                    scmd(
+                        'deactivate_pc_dm',
+                        [$('#'+currentCtx).attr('mapId'),currentCtx],
+                        console.log
+                    );
+                    $(document).click();
+                });
                 $('#ctx_add-npc').click(function(event){
                     var _pos = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
                     var pos = [roundTo(_pos[0],50)/50,roundTo(_pos[1],50)/50];
@@ -1237,6 +1247,7 @@
             <button class='ctx-button' id='ctx_add-pc' ctx='add-pc'>Add Player Character</button>
             <button class='ctx-button' id='ctx_add-npc' ctx='add-npc'>Add NPC</button>
             <button class='ctx-button' id='ctx_remove-pc' ctx='remove-pc'>Close Player Character</button>
+            <button class='ctx-button' id='ctx_remove-pc-dm' ctx='remove-pc-dm'>Close Player Character</button>
             <button class='ctx-button' id='ctx_remove-npc' ctx='remove-npc'>Remove NPC</button>
             <button class='ctx-button' id='ctx_run-initiative' ctx='run-initiative'>Roll Initiative</button>
             <button class='ctx-button' id='ctx_remove-initiative' ctx='remove-initiative'>Remove From Initiative</button>
