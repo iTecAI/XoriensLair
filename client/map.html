@@ -364,20 +364,24 @@
                                         obscureInfo.sy = newpos[1];
                                     }
                                     obscureInfo.obscuring = false;
-
+                                    var zoomMod = Number(target.getAttribute('zoom'));
+                                    console.log(obscureInfo.sx/(Number(data.grid_data.columns)*10)*20,obscureInfo.sy/(Number(data.grid_data.rows)*10)*20);
                                     var args = [
                                         target.id,
-                                        (obscureInfo.sx/(Number(data.grid_data.columns)*50))*100,
-                                        (obscureInfo.sy/(Number(data.grid_data.rows)*50))*100,
+                                        Math.round((obscureInfo.sx/(Number(data.grid_data.columns)*10))*20)/5,
+                                        Math.round((obscureInfo.sy/(Number(data.grid_data.rows)*10))*20)/5,
                                         (obscureInfo.w/(Number(data.grid_data.columns)*50))*100,
                                         (obscureInfo.h/(Number(data.grid_data.rows)*50))*100,
                                         sha256(Math.random().toString())
                                     ];
-                                    if (args[3] < 5 || args[4] < 5) {
+                                    console.log(args);
+                                    if (args[3] < 1 && args[4] < 1) {
                                         return;
                                     }
 
-                                    scmd('obscure',args,function(){$('#selection-box').css('display','none')});
+                                    scmd('obscure',args,function(data){
+                                        $('#selection-box').css('display','none');
+                                    });
                                     
                                 }
                             });
@@ -419,8 +423,8 @@
                                 obElement.className = 'obscure';
                                 obElement.setAttribute('mapid',container.id);
                                 $(obElement).css({
-                                    'left':info[0].toString()+'%',
-                                    'top':info[1].toString()+'%',
+                                    'left':(info[0]*5).toString()+'%',
+                                    'top':(info[1]*5).toString()+'%',
                                     'width':(info[2]).toString()+'%',
                                     'height':(info[3]).toString()+'%',
                                     'background-color':'rgb(0,0,0)',
