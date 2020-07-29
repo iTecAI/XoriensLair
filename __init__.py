@@ -20,6 +20,9 @@ class Session:
             session = json.loads(session)
             self.maps = session['maps']
             self.characters = session['characters']
+            for k in self.characters.keys():
+                if type(self.characters[k]) == str:
+                    self.characters[k] = Character(_json=self.characters[k])
         else:
             self.maps = []
             self.characters = {}
@@ -36,8 +39,12 @@ class Session:
     def jsonify(self):
         ndct = {}
         for k in self.characters.keys():
-            ndct[k] = self.characters[k]
-
+            if type(self.characters[k]) == dict:
+                ndct[k] = self.characters[k]
+            elif type(self.characters[k]) == str:
+                ndct[k] = json.loads(self.characters[k])
+            else:
+                ndct[k] = self.characters[k].to_json()
         return {
             'maps':self.maps,
             'characters':ndct,
@@ -227,8 +234,9 @@ class Session:
 
         if args[0] == 'roll':
             if dat['type'] == 'pc':
+                print(self.characters)
                 roll = randint(1,20)+int(self.characters[fp]['skills']['initiative']['value'])+(random()/10)
-                data = self.characters[fp]
+                data = self.characters[fp].to_json()
                 ID = fp
                 index = -1
                 for i in range(len(self.maps)):
@@ -248,7 +256,10 @@ class Session:
                 if index >= 0:
                     with open('log.json','w') as f:
                         json.dump(self.maps,f)
-                    npc = json.loads(self.maps[index]['npcs'][args[2]]['data'])
+                    if type(self.maps[index]['npcs'][args[2]]['data']) == str:
+                        npc = json.loads(self.maps[index]['npcs'][args[2]]['data'])
+                    else:
+                        npc = self.maps[index]['npcs'][args[2]]['data']
                     name = npc['name']
                     icon = self.maps[index]['npcs'][args[2]]['icon']
                     data = json.dumps(self.maps[index]['npcs'][args[2]]['data'])

@@ -44,6 +44,7 @@
                 pageXS:null,
                 pageYS:null
             }; // Obscure info maintain
+            var currentInitiative = null;
             var ctxMenu = { // Selectors to activate custom context menu on
                 '#display-area':{
                     'end-initiative':'dm'
@@ -201,6 +202,7 @@
                         $('#adv-init').hide();
                         $('#adv-stop').hide();
                         $('#initiative-box').hide();
+                        currentInitiative = null;
                     }
 
                     scmd(
@@ -211,6 +213,7 @@
                             $('#ni-img').attr('src',getIcon(data.next.icon));
                             $('#current-init').attr('data-tooltip',data.current.name);
                             $('#next-init').attr('data-tooltip',data.next.name);
+                            
                         }
                     );
 
@@ -539,6 +542,12 @@
                                 npcElement.setAttribute('current-hp',previousData.session.maps[m].npcs[key].hp);
                                 var npcImg = document.createElement('img');
                                 npcImg.src = icon;
+                                $(npcImg).css({
+                                    'width':'80%',
+                                    'height':'80%',
+                                    'margin-left':'10%',
+                                    'margin-top':'10%'
+                                });
                                 $(npcImg).on('contextmenu',function(event){
                                     event.preventDefault();
                                     $(event.target.parentElement).trigger('contextmenu',[event.pageX,event.pageY]);
@@ -558,7 +567,7 @@
                                 if (cursor == 'move' && uType == 'dm') {
                                     $(npcElement).draggable({
                                         'disabled':false,
-                                        'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
+                                        //'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
                                         'containment':'parent'
                                     });
                                 } else {
@@ -574,10 +583,15 @@
                                         $(event.target).attr('id'),
                                         $(event.target).attr('data'),
                                         $(event.target).attr('current-hp'),
-                                        Math.trunc(pos[0]/50),
-                                        Math.trunc(pos[1]/50)
+                                        Math.round(pos[0]/50),
+                                        Math.round(pos[1]/50)
                                     ];
-                                    console.log(args);
+                                    if (args[4] < 0) {
+                                        args[4] = Math.abs(args[4]);
+                                    }
+                                    if (args[5] < 0) {
+                                        args[5] = Math.abs(args[5]);
+                                    }
                                     scmd(
                                         'modify_npc',
                                         args,
@@ -647,9 +661,6 @@
                                     (event.pageX - dispRect.x - topContainerRect.x),
                                     (event.pageY - dispRect.y - topContainerRect.y)
                                 ];
-                                var dx = Math.trunc((event.pageX-dispRect.x) - topContainerRect.x) * (zoomMod-1);
-                                    dy = Math.trunc((event.pageY-dispRect.y) - topContainerRect.y) * (zoomMod-1);
-                                console.log(dx,dy);
                                 localMapData[topContainer.id].pos = [(event.pageX-dispRect.x) - originDelta[0]*zoomDelta,(event.pageY-dispRect.y) - originDelta[1]*zoomDelta];
                                 //localMapData[topContainer.id].pos = newpos;
                                 var cid = null;
@@ -1112,7 +1123,11 @@
                         'initiative',
                         ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
                         function(data){
-                            $('#ci-img').attr('src',getIcon(data.current.data.icon));
+                            $('#ci-img').attr('src',getIcon(data.current.icon));
+                            $('#ni-img').attr('src',getIcon(data.next.icon));
+                            $('#current-init').attr('data-tooltip',data.current.name);
+                            $('#next-init').attr('data-tooltip',data.next.name);
+                            console.log(data);
                         }
                     );
                 });
@@ -1121,8 +1136,7 @@
                         'initiative',
                         ['end',$('#'+currentCtx).attr('mapId'),-1],
                         function(data) {
-                            console.log(data);
-                            alert('Initiative ended.');
+                            return;
                         }
                     );
                 });
