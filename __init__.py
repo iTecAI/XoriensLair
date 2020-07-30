@@ -2,10 +2,17 @@ from api import *
 import os
 import base64
 import json
-import datetime, time
+import datetime, time, shutil
 from threading import Thread
 from hashlib import sha256
 from random import random,randint
+
+if not os.path.exists(os.path.join('logs','dump')):
+    os.makedirs(os.path.join('logs','dump'))
+
+import logging
+import logging.config
+logging.config.fileConfig('logging.conf')
 
 # options
 IP = 'localhost'
@@ -13,10 +20,17 @@ S_PORT = 1022
 A_PORT = 1023
 DIR = os.path.join(os.getcwd(),'client/')
 
+LOGMODE = 'debug'
+#LOGMODE = 'server'
+
+MAX_LOG_SIZE = 10000000 # Max log size 10 MB
+
 class Session:
-    def __init__(self,instance,session=None):
+    def __init__(self,instance,session=None,name='None'):
+        self.logger = logging.LoggerAdapter(logging.getLogger('session_'+LOGMODE),{'sessionname':name})
+
         if session:
-            print(session)
+            self.logger.debug('Loaded session from file.')
             session = json.loads(session)
             self.maps = session['maps']
             self.characters = session['characters']
@@ -27,6 +41,7 @@ class Session:
                 else:
                     self.characters[k] = Character(_json=self.characters[k])
         else:
+            self.logger.debug('Created new session.')
             self.maps = []
             self.characters = {}
             self.character_urls = {}
@@ -57,9 +72,11 @@ class Session:
         }
     
     def save(self,fp,args): # No arguments
+        self.logger.debug('Saved session.')
         return {'save':self.jsonify()}
 
     def load_sheet(self,fp,args): # [URL or Beyond ID]
+        self.logger.debug('Loading sheet with URL '+args[0]+' for '+fp)
         url = args[0]
         if url.startswith('https://docs.google.com/spreadsheets'):
             char = Character(gurl=url.split('/')[5])
@@ -74,15 +91,19 @@ class Session:
     def update_sheet(self,fp,args): # []
         if fp in self.character_urls.keys():
             return self.load_sheet(fp,[self.character_urls[fp]])
+            self.logger.debug('Updated sheet for '+fp)
         else:
+            self.logger.warn('Failure to update sheet for '+fp)
             return {'code':404,'reason':'PC not found. Load a sheet.'}
             
     
     def load_map(self,fp,args): # [Data URL, # Rows, # Columns, Feet/grid square]
+        _id = sha256(str(time.time()*random()).encode('utf-8')).hexdigest()
+        self.logger.debug('Loading map with ID '+str(_id))
         url = args[0]
         self.maps.append({
             'image': url,
-            'id': sha256(str(time.time()*random()).encode('utf-8')).hexdigest(),
+            'id': _id,
             'grid_data':{
                 'rows':args[1],
                 'columns':args[2],
@@ -98,13 +119,16 @@ class Session:
     
     def delete_map(self,fp,args): # [Map ID]
         _id = args[0]
+        self.logger.debug('Deleting map '+str(_id))
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == _id:
                 del self.maps[i]
                 return {'code':200}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
+        self.logger.debug('Modifying map',args[0],'with args',args)
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['grid_data'] = {
@@ -114,9 +138,11 @@ class Session:
                 }
                 self.maps[i]['active'] = args[4]
                 return {'code':200}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def obscure(self,fp,args): # [Map ID, Top Corner X, Top Corner Y, Width, Height, Obscuration ID]
+        self.logger.debug('Obscuring map '+args[0]+' with args '+str(args))
         args[1] = float(args[1])
         args[2] = float(args[2])
         args[3] = float(args[3])
@@ -125,19 +151,24 @@ class Session:
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['obscuration'][args[5]] = [args[1],args[2],args[3],args[4]]
                 return {'code':200}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def remove_obscure(self,fp,args): # [Map ID, Obscuration ID]
+        self.logger.debug('Removing obscure '+str(args[1])+' from map '+str(args[0]))
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if args[1] in self.maps[i]['obscuration'].keys():
                     del self.maps[i]['obscuration'][args[1]]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - Obscure not found. User '+fp)
                     return {'code':404,'reason':'Obscure not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def activate_pc(self,fp,args): # [Map ID, Icon Name or Data URL, X, Y]
+        self.logger.debug('Activating PC for user '+fp)
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['characters'][fp] = {
@@ -145,20 +176,29 @@ class Session:
                     'pos':[int(args[2]),int(args[3])],
                     'icon':args[1]
                 }
+                self.logger.debug('Activated '+self.characters[fp]['name']+' on map '+args[0]+' for user '+fp)
                 return {'code':200}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def move_pc(self,fp,args): # [Map ID, X, Y]
+        self.logger.debug('Moving '+self.characters[fp]['name']+' on map '+args[0]+' for user '+fp+' to '+str(args[1:]))
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if fp in self.maps[i]['characters'].keys():
                     self.maps[i]['characters'][fp]['pos'] = [int(float(args[1])),int(float(args[2]))]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def modify_pc(self,fp,args): # [ID, Icon, List of keys and values ([['key1|key2|key3','value'],['key4|key5','value']])]
+        self.logger.debug('Modifying PC '+args[0]+' with '+args[2])
+        if (not args[0] in self.characters.keys()):
+            self.logger.warn('User error - Character not found. User '+fp)
+            return {'code':404,'reason':'Character not found.'}
         if str(args[1]) != '-1':
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
@@ -188,26 +228,33 @@ class Session:
         return {'code':200,'data':json.loads(self.characters[args[0]].to_json()),'outcomes':outcomes}
     
     def deactivate_pc(self,fp,args): # [Map ID]
+        self.logger.debug('Deactivating PC of User '+fp+' on map '+args[0])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if fp in self.maps[i]['characters'].keys():
                     del self.maps[i]['characters'][fp]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
-    def deactivate_pc_dm(self,fp,args): # [Map ID]
+    def deactivate_pc_dm(self,fp,args): # [Map ID, PC ID]
+        self.logger.debug('DM is deactivating PC of User '+args[1]+' on map '+args[0])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if args[1] in self.maps[i]['characters'].keys():
                     del self.maps[i]['characters'][args[1]]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def assign_pc(self,fp,args): # [Old ID]
+        self.logger.debug('Assigning PC with ID '+args[0]+' to '+fp)
         if args[0] in self.characters.keys():
             self.characters[fp] = self.characters[args[0]]
             self.character_urls[fp] = self.character_urls[args[0]]
@@ -219,6 +266,7 @@ class Session:
                     del self.maps[m]['characters'][args[0]]
             return {'code':200}
         else:
+            self.logger.warn('User error - Character not found. User '+fp)
             return {'code':404,'reason':'Character not found'}
 
     def open5e(self,fp,args): 
@@ -252,6 +300,7 @@ class Session:
         return {'code':200,'result':json.dumps({'data':[i.json for i in results]})}
     
     def add_npc(self,fp,args): # [Map ID, Icon, Data, X, Y]
+        self.logger.debug('Creating NPC on '+args[0])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['npcs'][sha256(str(time.time()*random()).encode('utf-8')).hexdigest()] = {
@@ -261,9 +310,11 @@ class Session:
                     'hp':int(json.loads(args[2])['hit_points'])
                 }
                 return {'code':200}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
   
     def modify_npc(self,fp,args): # [Map ID, NPC ID, Data, Current HP, X, Y]
+        self.logger.debug('Modifying NPC '+args[1]+' on map '+args[0])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if args[1] in self.maps[i]['npcs'].keys():
@@ -272,20 +323,27 @@ class Session:
                     self.maps[i]['npcs'][args[1]]['pos'] = [int(args[4]),int(args[5])]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - NPC not found. User '+fp)
                     return {'code':404,'reason':'NPC not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
 
     def remove_npc(self,fp,args): # [Map ID, NPC ID]
+        self.logger.debug('Removing NPC '+args[1]+' from map '+args[0])
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 if args[1] in self.maps[i]['npcs'].keys():
                     del self.maps[i]['npcs'][args[1]]
                     return {'code':200}
                 else:
+                    self.logger.warn('User error - NPC not found. User '+fp)
                     return {'code':404,'reason':'NPC not found.'}
+        self.logger.warn('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def initiative(self,fp,args): # [Command, Map ID, NPC ID if applicable (otherwise -1)]
+        if not args[0] == 'check':
+            self.logger.debug('User '+fp+' is executing an initiative subcommand ('+args[0]+') on map '+args[1])
         code, dat = self.instance.check_user({'fingerprint':fp})
 
         if args[0] == 'roll':
@@ -390,28 +448,26 @@ class Session:
         return {'code':404,'reason':'Command not found or forbidden'}
         
 
-
-        
-
-        
-
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets
     def __init__(self):
         # Sets up the API instance
         self.sessions = {}
         self.users = []
         self.u_expire = {}
+        self.logger = logging.getLogger('instance_'+LOGMODE)
+        self.logger.debug('Instance loaded.')
 
     def new_session(self,data): # name, password, id, fingerprint, OPTIONAL session data
         # Creates a new session and adds the user that creates it as a DM
+        self.logger.debug('Creating session '+data['name']+' with ID '+data['id']+' and DM '+data['fingerprint'])
         if not 'password' in data.keys():
             data['password'] = None
         if 'session' in data.keys():
-            print(data)
+            self.logger.debug('Loading session from file.')
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(self,session=data['session']),
+                'instance':Session(self,session=data['session'],name=data['name']),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {
@@ -424,10 +480,11 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             }
             self.u_expire[data['fingerprint']] = time.time()+30
         else:
+            self.logger.debug('Creating session.')
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(self),
+                'instance':Session(self,name=data['name']),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {
@@ -443,6 +500,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         return code, r
     
     def new_user(self,data): # id, password, name, fingerprint
+        self.logger.debug('New user joining session '+data['id']+' with name '+data['name']+' and fingerprint '+data['fingerprint'])
         # Adds a new user to a session if they have the correct password
         if not 'password' in data.keys():
             data['password'] = None
@@ -457,7 +515,9 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 self.u_expire[data['fingerprint']] = time.time()+30
                 code, r = self.check_user({'fingerprint':data['fingerprint']})
                 return code, r
+            self.logger.warn('User',data['fingerprint'],'tried to join session',data['id'],'with incorrect password',data['password'])
             return 200, {'code':403}
+        self.logger.warn('User',data['fingerprint'],'tried to join nonexistent session with ID',data['id'])
         return 200, {'code':404}
     
     def check_user(self,data): # fingerprint
@@ -475,19 +535,23 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         return -1
     
     def edit_name(self,data): # sid, fingerprint, name
+        self.logger.debug('User '+data['fingerprint']+' is attempting to change their name to '+data['name'])
         # Edits player name
-        print(data)
         if data['sid'] in self.sessions.keys():
             ind = self.get_user_index(data['sid'],data['fingerprint'])
             if ind > -1:
                 self.sessions[data['sid']]['users'][ind]['name'] = data['name']
                 return 200, {'code':200}
             else:
+                self.logger.error('User '+fp+' failed to change name: Not in session.')
                 return 200, {'code':404,'reason':'Cannot find that user in the session.'}
         else:
+            self.logger.error('User '+fp+' failed to change name: Session does not exist.')
             return 200, {'code':404,'reason':'Cannot find that session.'}
     
     def session_cmd(self,data): # sid, fingerprint, command, args
+        if not (data['command'] == 'initiative' and 'check' in data['args'].split('|')):
+            self.logger.debug('User '+data['fingerprint']+' sending command '+data['command']+' to session '+data['sid']+' with '+str(len(data['args'].split('|')))+' arguments.')
         # Acts as an intermediary handler between the RunningInstance and the session specific to the user, and handles permissions.
         code, dat = self.check_user({'fingerprint':data['fingerprint']})
         if dat['sid'] == data['sid']:
@@ -497,10 +561,13 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     if dat['type'] in pdict[data['command']].split(','):
                         return 200, getattr(self.sessions[data['sid']]['instance'],data['command'])(data['fingerprint'],data['args'].split('|'))
                     else:
+                        self.logger.warn('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Access denied to command.')
                         return 200, {'code':403,'reason':'Forbidden: User does not have access to the command "'+data['command']+'".'}
                 else:
+                    self.logger.warn('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Command not found.')
                     return 200, {'code':404,'reason':'Not Found: Command "'+data['command']+'" not found.'}
         else:
+            self.logger.error('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Access denied to session.')
             return 200, {'code':403,'reason':'Forbidden: User does not have access to the requested session.'}
     
     def get_session_info(self,data): # sid
@@ -528,6 +595,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             return 200, {'code':404}
     
     def modify_session(self,data): # sid, fingerprint, newname, newpass
+        self.logger.debug('User '+data['fingerprint']+' is modifying session '+data['sid'])
         # Modify session information
         if not 'newpass' in data.keys():
             data['newpass'] = None
@@ -537,15 +605,18 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['sid']]['password'] = data['newpass']
             return 200, {'code':200}
         else:
+            self.logger.warn('User '+data['fingerprint']+' failed to modify session '+data['sid']+' - No access.')
             return 200, {'code':403,'reason':'You don\'t have access to this feature in this server.'}
     
     def purge_session(self,data): # sid, fingerprint
+        self.logger.debug('User '+data['fingerprint']+' is purging session '+data['sid'])
         # Clear session info
         code, dat = self.check_user({'fingerprint':data['fingerprint']})
         if dat['sid'] == data['sid'] and dat['type'] == 'dm':
             self.sessions[data['sid']]['instance'] = Session()
             return 200, {'code':200}
         else:
+            self.logger.error('User '+data['fingerprint']+' failed to purge session '+data['sid']+' - No access.')
             return 200, {'code':403,'reason':'You don\'t have access to this feature in this server.'}
 
 
@@ -554,21 +625,37 @@ class RunningInstance: # Currently running instance, maintains stateful presence
 
 # Sets up instance
 instance = RunningInstance()
+ROOTLOG = logging.getLogger('root')
 
 def check_all():
-    global instance
+    global instance, ROOTLOG
     while True:
         nse = {}
         for i in instance.sessions.keys():
             if instance.sessions[i]['expire'] <= datetime.datetime.now()+datetime.timedelta(days=14):
                 nse[i] = instance.sessions[i]
                 for u in range(len(instance.sessions[i]['users'])):
-                    if instance.u_expire[instance.sessions[i]['users'][u]['fingerprint']] < time.time():
+                    if instance.u_expire[instance.sessions[i]['users'][u]['fingerprint']] < time.time() and instance.sessions[i]['users'][u]['active']:
                         instance.sessions[i]['users'][u]['active'] = False
-                        print(instance.sessions[i]['users'][u]['fingerprint'] + ' lost connection.')
+                        ROOTLOG.debug(instance.sessions[i]['users'][u]['fingerprint'] + ' lost connection.')
+            else:
+                ROOTLOG.info('Killed session'+str(i))
 
         instance.sessions = nse
-        time.sleep(60)
+        time.sleep(15)
+
+def log_thread():
+    global ROOTLOG, MAX_LOG_SIZE
+    while True:
+        if os.stat(os.path.join('logs','latest.log')).st_size > MAX_LOG_SIZE:
+            fname = os.path.join('logs','dump','historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
+            ROOTLOG.info('latest.log exceeded '+str(MAX_LOG_SIZE/1000)+' kilobytes. Moving to logs/dump/historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
+            with open(fname,'w') as f:
+                pass
+            shutil.copy(os.path.join('logs','latest.log'),fname)
+            with open(os.path.join('logs','latest.log'),'w') as f:
+                f.write('')
+        time.sleep(10)
             
 
 # Activates PyLink instance and sets commands
@@ -586,6 +673,12 @@ LINK = PyLink(
 
 checker = Thread(target=check_all,name='check_thread')
 checker.start()
+ROOTLOG.info('Launched check_thread.')
+
+logdump = Thread(target=log_thread,name='log_thread')
+logdump.start()
+ROOTLOG.info('Launched log_thread.')
 
 # Activates servers
+ROOTLOG.info('Launching PyLink instance.')
 LINK.serve_forever()

@@ -423,6 +423,11 @@ html {
     background-color: white;
     border-radius: 50%;
     overflow: hidden;
+    z-index: 100
+}
+
+.obscure {
+    z-index: 101;
 }
 
 .pc-icon img, .npc-icon img {
