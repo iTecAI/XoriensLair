@@ -59,7 +59,10 @@
                     'remove-pc':'pc',
                     'remove-pc-dm':'dm',
                     'run-initiative':'pc',
-                    'remove-initiative':'pc'
+                    'remove-initiative':'pc',
+                    'set-pc-hp':'pc,dm',
+                    'set-pc-max-hp':'pc,dm',
+                    'change-pc-hp':'pc,dm'
                 },
                 '.npc-icon':{
                     'remove-npc':'dm',
@@ -480,7 +483,7 @@
                                 if (cursor == 'move' && uType == 'pc') {
                                     $(pcElement).draggable({
                                         'disabled':false,
-                                        'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
+                                        //'grid':[50*localMapData[container.id].zoom,50*localMapData[container.id].zoom],
                                         'containment':'parent'
                                     });
                                 } else {
@@ -493,8 +496,8 @@
                                     var pos = convertMouseToMapPos($(event.target).attr('mapId'),rect.left,rect.top);
                                     var args = [
                                         $(event.target).attr('mapId'),
-                                        Math.trunc(pos[0]/50),
-                                        Math.trunc(pos[1]/50)
+                                        Math.round(pos[0]/50),
+                                        Math.round(pos[1]/50)
                                     ];
                                     console.log(args);
                                     scmd(
@@ -800,15 +803,18 @@
                         });
 
                         var children = $('#custom-ctx').children('*');
+                        var ct = 0;
                         for (var c=0; c<children.length; c++) {
                             if (Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx'))) {
-                                if (uType == ctxMenu[sel][$(children[c]).attr('ctx')]) {
+                                if (ctxMenu[sel][$(children[c]).attr('ctx')].split(',').includes(uType)) {
                                     $(children[c]).toggleClass('active',true);
+                                    ct++;
                                 } else { $(children[c]).toggleClass('active',false); }
                             } else { $(children[c]).toggleClass('active',false); }
                         }
-
-                        $('#custom-ctx').toggleClass('active',true);
+                        if (ct > 0) {
+                            $('#custom-ctx').toggleClass('active',true);
+                        }
                         event.preventDefault();
                     }
                 });
@@ -1102,6 +1108,15 @@
                     $('#modal-back').toggleClass('active',true);
                     $('#change-name-dialog').toggleClass('active',true);
                 });
+                $('#update-sheet').click(function(){
+                    scmd(
+                        'update_sheet',
+                        ['0'],
+                        function(){
+                            command('gsi',{'sid':params.get('id')},1023,refresh);
+                        }
+                    );
+                });
                 $('#set-sheet').click(function(){
                     $('#modal-back').toggleClass('active',true);
                     $('#set-sheet-dialog').toggleClass('active',true);
@@ -1262,6 +1277,72 @@
                         }
                     );
                 });
+                $('#ctx_set-pc-hp').click(function(event){
+                    var new_hp = Number(prompt('Enter new HP amount.'));
+                    if (isNaN(new_hp)) {
+                        alert('Please enter a number.');
+                        return;
+                    }
+                    if (new_hp <= previousData.session.characters[currentCtx].max_hp && new_hp >= 0) {
+                        scmd(
+                            'modify_pc',
+                            [currentCtx,-1,new_hp,-1,-1],
+                            function(){
+                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                            }
+                        );
+                    } else {
+                        alert('The new HP value must be between 0 and '+previousData.session.characters[currentCtx].max_hp);
+                    }
+                });
+                $('#ctx_set-pc-max-hp').click(function(event){
+                    var new_hp = Number(prompt('Enter new Max HP amount.'));
+                    if (isNaN(new_hp)) {
+                        alert('Please enter a number.');
+                        return;
+                    }
+                    if (new_hp >= 0) {
+                        if (new_hp < previousData.session.characters[currentCtx].hp) {
+                            scmd(
+                                'modify_pc',
+                                [currentCtx,-1,new_hp,new_hp,-1],
+                                function(){
+                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                }
+                            );
+                        } else {
+                            scmd(
+                                'modify_pc',
+                                [currentCtx,-1,-1,new_hp,-1],
+                                function(){
+                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                }
+                            );
+                        }
+                    } else {
+                        alert('The new HP value must be greater than 0.');
+                    }
+                });
+                $('#ctx_change-pc-hp').click(function(event){
+                    var change = Number(prompt('Enter HP change (positive or negative).'));
+                    if (isNaN(change)) {
+                        alert('Please enter a number.');
+                        return;
+                    }
+                    var new_hp = previousData.session.characters[currentCtx].hp + change;
+                    if (new_hp > previousData.session.characters[currentCtx].max_hp) {
+                        new_hp = previousData.session.characters[currentCtx].max_hp;
+                    } else if (new_hp < 0) {
+                        new_hp = 0;
+                    }
+                    scmd(
+                        'modify_pc',
+                        [currentCtx,-1,new_hp,-1,-1],
+                        function(){
+                            command('gsi',{'sid':params.get('id')},1023,refresh);
+                        }
+                    );
+                });
             });
 
 
@@ -1285,6 +1366,9 @@
             <button class='ctx-button' id='ctx_run-initiative' ctx='run-initiative'>Roll Initiative</button>
             <button class='ctx-button' id='ctx_remove-initiative' ctx='remove-initiative'>Remove From Initiative</button>
             <button class='ctx-button' id='ctx_end-initiative' ctx='end-initiative'>End Initiative</button>
+            <button class='ctx-button' id='ctx_set-pc-hp' ctx='set-pc-hp'>Set HP</button>
+            <button class='ctx-button' id='ctx_set-pc-max-hp' ctx='set-pc-max-hp'>Set Maximum HP</button>
+            <button class='ctx-button' id='ctx_change-pc-hp' ctx='change-pc-hp'>Change HP</button>
         </div>
 
         <div id='cursors-bar'>
@@ -1303,6 +1387,7 @@
             <div class='user-buttons' id='player-buttons'>
                 <button id='edit-name' data-tooltip='Edit Player Name' data-tooltip-location="right"><img src="assets/editname.png"></button>
                 <button id='set-sheet' data-tooltip='Import Sheet' data-tooltip-location="right"><img src="assets/sheet.png"></button>
+                <button id='update-sheet' data-tooltip='Update Sheet' data-tooltip-location="right"><img src="assets/update_sheet.png"></button>
                 <button id='set-icon' data-tooltip='Set Player Icon' data-tooltip-location="right"><img src="assets/avatar.png"></button>
             </div>
             <div class='user-buttons' id='dm-buttons'>
@@ -1338,6 +1423,7 @@
             <p>Obscuration Cursor Icon: <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Advance Initiative Icon: <a href="https://www.flaticon.com/authors/pixel-perfect" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>End Initiative Icon: <a href="https://www.flaticon.com/free-icon/no-stopping_803294" title="Those Icons">Those Icons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
+            <p>Refresh Icon: <a href="http://www.freepik.com/" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->

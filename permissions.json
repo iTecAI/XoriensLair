@@ -1,6 +1,7 @@
 {
     "save":"dm",
     "load_sheet":"pc",
+    "update_sheet":"pc",
     "load_map":"dm",
     "delete_map":"dm",
     "modify_map":"dm",
@@ -10,6 +11,7 @@
     "deactivate_pc":"pc",
     "deactivate_pc_dm":"dm",
     "move_pc":"pc",
+    "modify_pc":"pc,dm",
     "open5e":"pc,dm",
     "add_npc":"dm",
     "modify_npc":"dm",

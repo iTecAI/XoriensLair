@@ -20,12 +20,14 @@ class Session:
             session = json.loads(session)
             self.maps = session['maps']
             self.characters = session['characters']
+            self.character_urls = session['character_urls']
             for k in self.characters.keys():
                 if type(self.characters[k]) == str:
                     self.characters[k] = Character(_json=self.characters[k])
         else:
             self.maps = []
             self.characters = {}
+            self.character_urls = {}
         
         self.initiative_data = {
             'active':False,
@@ -44,10 +46,11 @@ class Session:
             elif type(self.characters[k]) == str:
                 ndct[k] = json.loads(self.characters[k])
             else:
-                ndct[k] = self.characters[k].to_json()
+                ndct[k] = json.loads(self.characters[k].to_json())
         return {
             'maps':self.maps,
             'characters':ndct,
+            'character_urls':self.character_urls,
             'initiative':self.initiative_data
         }
     
@@ -63,7 +66,15 @@ class Session:
         else:
             char = Character(ddbid=url)
         self.characters[fp] = char
+        self.character_urls[fp] = url
         return {'code':200}
+    
+    def update_sheet(self,fp,args): # []
+        if fp in self.character_urls.keys():
+            return self.load_sheet(fp,[self.character_urls[fp]])
+        else:
+            return {'code':404,'reason':'PC not found. Load a sheet.'}
+            
     
     def load_map(self,fp,args): # [Data URL, # Rows, # Columns, Feet/grid square]
         url = args[0]
@@ -144,6 +155,22 @@ class Session:
                 else:
                     return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
+    
+    def modify_pc(self,fp,args): # [ID, Icon, HP, Max HP, Name]
+        if str(args[1]) != '-1':
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['characters'].keys():
+                    self.maps[m]['characters'][args[0]]['icon'] = args[1]
+        if str(args[2]) != '-1':
+            self.characters[args[0]]['hp'] = int(args[2])
+        if str(args[3]) != '-1':
+            self.characters[args[0]]['max_hp'] = int(args[3])
+        if str(args[4]) != '-1':
+            self.characters[args[0]]['name'] = args[4]
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['characters'].keys():
+                    self.maps[m]['characters'][args[0]]['name'] = args[4]
+        return {'code':200,'data':json.loads(self.characters[args[0]].to_json())}
     
     def deactivate_pc(self,fp,args): # [Map ID]
         for i in range(len(self.maps)):
