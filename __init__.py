@@ -368,8 +368,6 @@ class Session:
                     if self.maps[i]['id'] == args[1]:
                         index = i
                 if index >= 0:
-                    with open('log.json','w') as f:
-                        json.dump(self.maps,f)
                     if type(self.maps[index]['npcs'][args[2]]['data']) == str:
                         npc = json.loads(self.maps[index]['npcs'][args[2]]['data'])
                     else:

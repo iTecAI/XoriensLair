@@ -49,6 +49,23 @@
                 pageYS:null
             }; // Obscure info maintain
             var currentInitiative = null;
+
+            /*
+                selection arguments:
+                allowedUsers|ctxModifiers
+
+                allowedUsers: (comma-sep)
+                - pc: Player/User
+                - dm: Dungeon Master
+
+                ctxModifiers: (comma-sep)
+                - self: User owns this character (pc only)
+                - !self: User does not own this character and is not the DM
+                - init: It is user's turn in initiative, or it is the turn in the initiative of one of the DM's NPCs
+                - !init: It is NOT user's turn in initiative, or it is NOT the turn in the initiative of one of the DM's NPCs
+                - in_init: The user's PC or the selected NPC is in the initiative count
+                - !in_init: The user's PC or the selected NPC is NOT in the initiative count
+            */
             var ctxMenu = { // Selectors to activate custom context menu on
                 '#display-area':{
                     'end-initiative':'dm'
@@ -60,20 +77,20 @@
                     'end-initiative':'dm'
                 },
                 '.pc-icon':{
-                    'remove-pc':'pc',
+                    'remove-pc':'pc|self',
                     'remove-pc-dm':'dm',
-                    'run-initiative':'pc',
-                    'remove-initiative':'pc',
-                    'set-pc-hp':'pc,dm',
-                    'set-pc-max-hp':'pc,dm',
-                    'change-pc-hp':'pc,dm',
-                    'edit-pc':'pc,dm',
-                    'claim-pc':'pc'
+                    'run-initiative':'pc|!in_init,self',
+                    'remove-initiative':'pc|in_init,self',
+                    'set-pc-hp':'pc,dm|self',
+                    'set-pc-max-hp':'pc,dm|self',
+                    'change-pc-hp':'pc,dm|self',
+                    'edit-pc':'pc,dm|self',
+                    'claim-pc':'pc|!self'
                 },
                 '.npc-icon':{
                     'remove-npc':'dm',
-                    'run-initiative':'dm',
-                    'remove-initiative':'dm'
+                    'run-initiative':'dm|!in_init',
+                    'remove-initiative':'dm|in_init'
                 }
             }; 
 
@@ -917,9 +934,176 @@
                         var ct = 0;
                         for (var c=0; c<children.length; c++) {
                             if (Object.keys(ctxMenu[sel]).includes($(children[c]).attr('ctx'))) {
-                                if (ctxMenu[sel][$(children[c]).attr('ctx')].split(',').includes(uType)) {
-                                    $(children[c]).toggleClass('active',true);
-                                    ct++;
+                                if (ctxMenu[sel][$(children[c]).attr('ctx')].includes('|')) {
+                                    var allowedUsers = ctxMenu[sel][$(children[c]).attr('ctx')].split('|')[0];
+                                    var ctxModifiers = ctxMenu[sel][$(children[c]).attr('ctx')].split('|')[1];
+                                } else {
+                                    var allowedUsers = ctxMenu[sel][$(children[c]).attr('ctx')];
+                                    var ctxModifiers = '';
+                                }
+                                if (allowedUsers.split(',').includes(uType)) {
+                                    var checked = false;
+                                    if (ctxModifiers.split(',').includes('self') && uType == 'pc' ) {
+                                        if (currentCtx == BrowserFingerprint) {
+                                            $(children[c]).toggleClass('active',true);
+                                            ct++;
+                                        } else {
+                                            $(children[c]).toggleClass('active',false);
+                                        }
+                                        checked = true;
+                                    } 
+                                    if (ctxModifiers.split(',').includes('!self') && uType == 'pc' ) {
+                                        if (currentCtx != BrowserFingerprint && $('#'+currentCtx).hasClass('pc-icon')) {
+                                            $(children[c]).toggleClass('active',true);
+                                            ct++;
+                                        } else {
+                                            $(children[c]).toggleClass('active',false);
+                                        }
+                                        checked = true;
+                                    }
+                                    if (ctxModifiers.split(',').includes('init')) {
+                                        if (previousData.session.initiative.active) {
+                                            if (uType == 'pc') {
+                                                if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id == BrowserFingerprint) {
+                                                    $(children[c]).toggleClass('active',true);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                            } else {
+                                                if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].type == 'dm') {
+                                                    $(children[c]).toggleClass('active',true);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                            }
+                                        } else {
+                                            $(children[c]).toggleClass('active',false);
+                                        }
+                                        checked = true
+                                    }
+                                    if (ctxModifiers.split(',').includes('!init')) {
+                                        if (!previousData.session.initiative.active) {
+                                            if (ctxModifiers.split(',').includes('self') && uType == 'pc' ) {
+                                                if (currentCtx == BrowserFingerprint) {
+                                                    $(children[c]).toggleClass('active',true);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                                checked = true;
+                                            } else {
+                                                $(children[c]).toggleClass('active',true);
+                                            }
+                                            ct++;
+                                        } else {
+                                            if (uType == 'pc') {
+                                                if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id != BrowserFingerprint) {
+                                                    $(children[c]).toggleClass('active',true);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                            } else {
+                                                if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].type != 'dm') {
+                                                    $(children[c]).toggleClass('active',true);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                            }
+                                        }
+                                        checked = true
+                                    }
+                                    if (ctxModifiers.split(',').includes('in_init')) {
+                                        if (previousData.session.initiative.active) {
+                                            if (uType == 'pc') {
+                                                var res = false;
+                                                for (var e=0;e<previousData.session.initiative.rolls.length;e++) {
+                                                    if (previousData.session.initiative.order[previousData.session.initiative.rolls[e]].id == BrowserFingerprint) {
+                                                        res = true;
+                                                    }
+                                                }
+                                                $(children[c]).toggleClass('active',res);
+                                                if (ctxModifiers.split(',').includes('self') && uType == 'pc' ) {
+                                                    if (currentCtx == BrowserFingerprint) {
+                                                        $(children[c]).toggleClass('active',res);
+                                                        ct++;
+                                                    } else {
+                                                        $(children[c]).toggleClass('active',false);
+                                                    }
+                                                    checked = true;
+                                                } 
+                                                if (ctxModifiers.split(',').includes('!self') && uType == 'pc' ) {
+                                                    if (currentCtx != BrowserFingerprint && $('#'+currentCtx).hasClass('pc-icon')) {
+                                                        $(children[c]).toggleClass('active',res);
+                                                        ct++;
+                                                    } else {
+                                                        $(children[c]).toggleClass('active',false);
+                                                    }
+                                                    checked = true;
+                                                }
+                                            } else {
+                                                var res = false;
+                                                for (var e=0;e<previousData.session.initiative.rolls.length;e++) {
+                                                    if (previousData.session.initiative.order[previousData.session.initiative.rolls[e]].id == currentCtx) {
+                                                        res = true;
+                                                    }
+                                                }
+                                                $(children[c]).toggleClass('active',res);
+                                            }
+                                        } else {
+                                            $(children[c]).toggleClass('active',false);
+                                        }
+                                        checked = true
+                                    }
+                                    if (ctxModifiers.split(',').includes('!in_init')) {
+                                        if (previousData.session.initiative.active) {
+                                            if (uType == 'pc') {
+                                                var res = true;
+                                                for (var e=0;e<previousData.session.initiative.rolls.length;e++) {
+                                                    if (previousData.session.initiative.order[previousData.session.initiative.rolls[e]].id == BrowserFingerprint) {
+                                                        res = false;
+                                                    }
+                                                }
+                                                $(children[c]).toggleClass('active',res);
+                                                if (ctxModifiers.split(',').includes('self') && uType == 'pc' ) {
+                                                    if (currentCtx == BrowserFingerprint) {
+                                                        $(children[c]).toggleClass('active',res);
+                                                        ct++;
+                                                    } else {
+                                                        $(children[c]).toggleClass('active',false);
+                                                    }
+                                                    checked = true;
+                                                } 
+                                                if (ctxModifiers.split(',').includes('!self') && uType == 'pc' ) {
+                                                    if (currentCtx != BrowserFingerprint && $('#'+currentCtx).hasClass('pc-icon')) {
+                                                        $(children[c]).toggleClass('active',res);
+                                                        ct++;
+                                                    } else {
+                                                        $(children[c]).toggleClass('active',false);
+                                                    }
+                                                    checked = true;
+                                                }
+                                            } else {
+                                                var res = true;
+                                                for (var e=0;e<previousData.session.initiative.rolls.length;e++) {
+                                                    if (previousData.session.initiative.order[previousData.session.initiative.rolls[e]].id == currentCtx) {
+                                                        res = false;
+                                                    }
+                                                }
+                                                $(children[c]).toggleClass('active',res);
+                                            }
+                                        } else {
+                                            $(children[c]).toggleClass('active',true);
+                                        }
+                                        checked = true
+                                    }
+                                    if (!checked) {
+                                        $(children[c]).toggleClass('active',true);
+                                        ct++;
+                                    }
                                 } else { $(children[c]).toggleClass('active',false); }
                             } else { $(children[c]).toggleClass('active',false); }
                         }
