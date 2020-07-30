@@ -3,6 +3,10 @@
     <head>
         <title>Xorien's Lair - Map Display</title>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootbox.js/5.4.0/bootbox.min.js"></script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css" integrity="sha384-9aIt2nRpC12Uk9gS9baDl411NQApFmC26EwAOH8WgZl5MYYxFfc+NcPb1dKGj7Sk" crossorigin="anonymous">
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js" integrity="sha384-OgVRvuATP1z7JjHLkuOU7Xw704+h835Lr+6QL9UvYjZE3Ipu6Tp75j7Bh/kR0JKI" crossorigin="anonymous"></script>
+        <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
         <script src="pack/sha.js"></script>
         <script src="pack/crc.js"></script>
         <script src="scripts/cookies.js"></script>
@@ -62,7 +66,9 @@
                     'remove-initiative':'pc',
                     'set-pc-hp':'pc,dm',
                     'set-pc-max-hp':'pc,dm',
-                    'change-pc-hp':'pc,dm'
+                    'change-pc-hp':'pc,dm',
+                    'edit-pc':'pc,dm',
+                    'claim-pc':'pc'
                 },
                 '.npc-icon':{
                     'remove-npc':'dm',
@@ -70,6 +76,23 @@
                     'remove-initiative':'dm'
                 }
             }; 
+
+            var SCORES = [
+                ['str','strength'],
+                ['dex','dexterity'],
+                ['con','constitution'],
+                ['int','intelligence'],
+                ['wis','wisdom'],
+                ['cha','charisma']
+            ];
+            var SKILLS = [
+                'athletics',
+                'acrobatics','sleightOfHand','stealth',
+                'arcana','history','investigation','nature','religion',
+                'animalHandling','insight','medicine','perception','survival',
+                'deception','intimidation','performance','persuasion'
+            ];
+
             var currentCtx = null; // Currently active context menu
 
             var npcData = { // Data for making NPCs
@@ -90,11 +113,96 @@
                 }
             }
 
+            function getmod(score) {
+                var modref = {
+                    '1':-5,
+                    '2-3':-4,
+                    '4-5':-3,
+                    '6-7':-2,
+                    '8-9':-1,
+                    '10-11':0,
+                    '12-13':1,
+                    '14-15':2,
+                    '16-17':3,
+                    '18-19':4,
+                    '20-21':5,
+                    '22-23':6,
+                    '24-25':7,
+                    '26-27':8,
+                    '28-29':9,
+                    '30':10
+                }
+
+                for (var k=0;k<Object.keys(modref).length;k++) {
+                    if (Object.keys(modref)[k].split('-').includes(score.toString())) {
+                        return modref[Object.keys(modref)[k]];
+                    }
+                }
+                return null;
+            }
+
             function roundTo(v,interval) { // Round v to nearest interval (ie round 54 to nearest 50 = 50, round 97 to nearest 50 = 100)
                 return Math.round(v/interval)*interval;
             }
 
+            // Code from https://stackoverflow.com/a/11183002
+            var stringConstructor = "test".constructor;
+            var arrayConstructor = [].constructor;
+            var objectConstructor = ({}).constructor;
+            var numberConstructor = Number(1).constructor;
+
+            function whatIsIt(object) {
+                if (object === null) {
+                    return "null";
+                }
+                if (object === undefined) {
+                    return "undefined";
+                }
+                if (object.constructor === stringConstructor) {
+                    return "string";
+                }
+                if (object.constructor === numberConstructor) {
+                    return "number";
+                }
+                if (object.constructor === arrayConstructor) {
+                    return "array";
+                }
+                if (object.constructor === objectConstructor) {
+                    return "object";
+                }
+                {
+                    return null;
+                }
+            }
+            // End stackoverflow code
+
+            function toPythonListStr(l) {
+                var output = '[';
+                for (var i=0;i<l.length;i++) {
+                    if (whatIsIt(l[i]) == "number") {
+                        output += Number(l[i]) + ',';
+                    } else if (whatIsIt(l[i]) == "array") {
+                        output += toPythonListStr(l[i]) + ',';
+                    } else if (whatIsIt(l[i]) == 'object') {
+                        output += '"'+JSON.stringify(l[i]) + '",';
+                    } else {
+                        output += '"'+l[i].toString() + '",';
+                    }
+                }
+                if (output.endsWith(',')) {
+                    output = output.substr(0,output.length-1);
+                }
+                output += ']';
+                return output;
+            }
+
             function scmd(cmd,args,callback) {
+                for (var a=0;a<args.length;a++) {
+                    if (whatIsIt(args[a]) == "array") {
+                        args[a] = toPythonListStr(args[a]);
+                    }
+                }
+                console.log(args);
                 command('scmd',{
                     'sid':params.get('id'),
                     'fingerprint':BrowserFingerprint,
@@ -227,14 +335,16 @@
                     var keys = Object.keys(previousData.users);
 
                     for (var k=0;k<keys.length;k++) {
-                        var newElement = document.createElement('div');
-                        newElement.id = 'user-'+previousData.users[keys[k]].fingerprint;
-                        newElement.innerText = previousData.users[keys[k]].name;
-                        newElement.className = 'noselect'
-                        if (previousData.users[keys[k]].type == 'dm') {
-                            newElement.style = 'border-left: 4px solid rgb(255, 47, 10);';
+                        if (previousData.users[keys[k]].active) {
+                            var newElement = document.createElement('div');
+                            newElement.id = 'user-'+previousData.users[keys[k]].fingerprint;
+                            newElement.innerText = previousData.users[keys[k]].name;
+                            newElement.className = 'noselect'
+                            if (previousData.users[keys[k]].type == 'dm') {
+                                newElement.style = 'border-left: 4px solid rgb(255, 47, 10);';
+                            }
+                            elbox.appendChild(newElement);
                         }
-                        elbox.appendChild(newElement);
                     }
 
                     if (previousData.users[BrowserFingerprint].type == 'dm') {
@@ -505,7 +615,7 @@
                                         args,
                                         function(data){
                                             if (data.code == 200) {
-                                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                                             }
                                         }
                                     );
@@ -600,7 +710,7 @@
                                         args,
                                         function(data){
                                             if (data.code == 200) {
-                                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                                             }
                                         }
                                     );
@@ -717,7 +827,7 @@
                     console.log('FINGERPRINT: '+BrowserFingerprint);
                     command('checkuser',{'fingerprint':BrowserFingerprint},1023,function(data){
                         if (!data['found']) {
-                            command('gsi',{'sid':params.get('id')},1023,function(data){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,function(data){
                                 if (data['code'] == 200) {
                                     if (data['hasPassword']) {
                                         command('joinsession',{
@@ -728,13 +838,13 @@
                                         },1023,function(data){
                                             if (Object.keys(data).includes('code')) {
                                                 if (data['code'] == 403) {
-                                                    alert('Password is incorrect.');
+                                                    bootbox.alert('Password is incorrect.');
                                                     window.location = 'index.html';
                                                 } else {
-                                                    alert('That server does not exist. Please make sure you copied your join link correctly.')
+                                                    bootbox.alert('That server does not exist. Please make sure you copied your join link correctly.')
                                                 }
                                             } else {
-                                                alert('Success!');
+                                                bootbox.alert('Success!');
                                             }
                                         });
                                     } else {
@@ -746,18 +856,18 @@
                                         },1023,function(data){
                                             if (Object.keys(data).includes('code')) {
                                                 if (data['code'] == 403) {
-                                                    alert('Password is incorrect.');
+                                                    bootbox.alert('Password is incorrect.');
                                                     window.location = 'index.html';
                                                 } else {
-                                                    alert('That server does not exist. Please make sure you copied your join link correctly.')
+                                                    bootbox.alert('That server does not exist. Please make sure you copied your join link correctly.')
                                                 }
                                             } else {
-                                                alert('Success!');
+                                                bootbox.alert('Success!');
                                             }
                                         });
                                     }
                                 } else {
-                                    alert('Cannot find that session.');
+                                    bootbox.alert('Cannot find that session.');
                                 }
                             });
                         } else {
@@ -873,7 +983,7 @@
                         'name':$('#change-nick-input').val()
                     },1023,function(data){
                         if (data['code'] == 404) {
-                            alert('Error: '+data['reason']);
+                            bootbox.alert('Error: '+data['reason']);
                         }
                     });
                 });
@@ -894,7 +1004,7 @@
                         'newpass':$('#session-psw-set').val()
                     },1023,function(data){
                         if (data.code != 200) {
-                            alert(data.reason);
+                            bootbox.alert(data.reason);
                         }
                     });
                 });
@@ -905,7 +1015,7 @@
                             'fingerprint':BrowserFingerprint
                         },1023,function(data){
                             if (data.code != 200) {
-                                alert(data.reason);
+                                bootbox.alert(data.reason);
                             }
                         })
                     }
@@ -935,9 +1045,9 @@
                         'args':$('#set-sheet-input').val()
                     },1023,function(data){
                         if (data['code'] == 200) {
-                            alert('Sheet loaded.');
+                            bootbox.alert('Sheet loaded.');
                         } else {
-                            alert('Error: '+data['reason']);
+                            bootbox.alert('Error: '+data['reason']);
                         }
                     });
                 });
@@ -1099,7 +1209,7 @@
 
                 // Refresh Loop
                 window.setInterval(function(){
-                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                 },400);
 
                 // Button Cosmetics
@@ -1112,8 +1222,9 @@
                     scmd(
                         'update_sheet',
                         ['0'],
-                        function(){
-                            command('gsi',{'sid':params.get('id')},1023,refresh);
+                        function(data){
+                            console.log(data);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                         }
                     );
                 });
@@ -1280,53 +1391,53 @@
                 $('#ctx_set-pc-hp').click(function(event){
                     var new_hp = Number(prompt('Enter new HP amount.'));
                     if (isNaN(new_hp)) {
-                        alert('Please enter a number.');
+                        bootbox.alert('Please enter a number.');
                         return;
                     }
                     if (new_hp <= previousData.session.characters[currentCtx].max_hp && new_hp >= 0) {
                         scmd(
                             'modify_pc',
-                            [currentCtx,-1,new_hp,-1,-1],
+                            [currentCtx,-1,[['hp',new_hp]]],
                             function(){
-                                command('gsi',{'sid':params.get('id')},1023,refresh);
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                             }
                         );
                     } else {
-                        alert('The new HP value must be between 0 and '+previousData.session.characters[currentCtx].max_hp);
+                        bootbox.alert('The new HP value must be between 0 and '+previousData.session.characters[currentCtx].max_hp);
                     }
                 });
                 $('#ctx_set-pc-max-hp').click(function(event){
                     var new_hp = Number(prompt('Enter new Max HP amount.'));
                     if (isNaN(new_hp)) {
-                        alert('Please enter a number.');
+                        bootbox.alert('Please enter a number.');
                         return;
                     }
                     if (new_hp >= 0) {
                         if (new_hp < previousData.session.characters[currentCtx].hp) {
                             scmd(
                                 'modify_pc',
-                                [currentCtx,-1,new_hp,new_hp,-1],
+                                [currentCtx,-1,[['hp',new_hp],['max_hp',new_hp]]],
                                 function(){
-                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                                 }
                             );
                         } else {
                             scmd(
                                 'modify_pc',
-                                [currentCtx,-1,-1,new_hp,-1],
+                                [currentCtx,-1,[['max_hp',new_hp]]],
                                 function(){
-                                    command('gsi',{'sid':params.get('id')},1023,refresh);
+                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                                 }
                             );
                         }
                     } else {
-                        alert('The new HP value must be greater than 0.');
+                        bootbox.alert('The new HP value must be greater than 0.');
                     }
                 });
                 $('#ctx_change-pc-hp').click(function(event){
                     var change = Number(prompt('Enter HP change (positive or negative).'));
                     if (isNaN(change)) {
-                        alert('Please enter a number.');
+                        bootbox.alert('Please enter a number.');
                         return;
                     }
                     var new_hp = previousData.session.characters[currentCtx].hp + change;
@@ -1337,9 +1448,106 @@
                     }
                     scmd(
                         'modify_pc',
-                        [currentCtx,-1,new_hp,-1,-1],
+                        [currentCtx,-1,[['hp',new_hp]]],
                         function(){
-                            command('gsi',{'sid':params.get('id')},1023,refresh);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                        }
+                    );
+                });
+                $('#ctx_edit-pc').click(function(event){
+                    $('#pc-editor').attr('editing',currentCtx);
+                    $('#hp-input').val(previousData.session.characters[currentCtx].hp);
+                    $('#max-hp-input').val(previousData.session.characters[currentCtx].max_hp);
+                    $('#ac-input').val(previousData.session.characters[currentCtx].ac);
+                    $('#init-input').val(previousData.session.characters[currentCtx].skills.initiative.value);
+                    for (var s=0;s<SCORES.length;s++) {
+                        $('#'+SCORES[s][0]+'-score-input').val(previousData.session.characters[currentCtx].stats[SCORES[s][1]]);
+                        var mod = getmod(previousData.session.characters[currentCtx].stats[SCORES[s][1]]);
+                        if (mod > 0) {
+                            mod = '+'+mod;
+                        }
+                        $('#'+SCORES[s][0]+'-bonus .value').text(mod);
+                        var mod = getmod(previousData.session.characters[currentCtx].stats[SCORES[s][1]]);
+                        if (previousData.session.characters[currentCtx].saves[SCORES[s][1]+'Save'].prof == 1) {
+                            mod = mod + previousData.session.characters[currentCtx].stats.prof_bonus;
+                        }
+                        if (mod > 0) {
+                            mod = '+'+mod;
+                        }
+                        $('#'+SCORES[s][0]+'-save .value').text(mod);
+                    }
+
+                    for (var s=0;s<SKILLS.length;s++) {
+                        var mod = previousData.session.characters[currentCtx].skills[SKILLS[s]].value;
+                        if (mod > 0) {
+                            mod = '+'+mod;
+                        }
+                        $('#'+SKILLS[s]+'-skill').text(mod);
+                    }
+
+                    $('#modal-back').toggleClass('active',true);
+                    $('#pc-editor').toggleClass('active',true);
+                });
+                $('#pc-editor input').change(function(event){
+                    var editing = $('#pc-editor').attr('editing');
+                    if (/^\d+$/.test($(event.target).val())) {
+                        var val = Number($(event.target).val());
+                        if (val < Number(event.target.min)) {
+                            val = Number(event.target.min);
+                        }
+                        if (val > Number(event.target.max)) {
+                            val = Number(event.target.max);
+                        }
+                        var key = $(event.target).attr('key');
+                        console.log(key,val);
+                        scmd(
+                            'modify_pc',
+                            [editing,-1,[[key,val]]],
+                            function(){
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,function(data){
+                                    refresh(data);
+                                    var editing = $('#pc-editor').attr('editing');
+                                    $('#hp-input').val(data.session.characters[editing].hp);
+                                    $('#max-hp-input').val(data.session.characters[editing].max_hp);
+                                    $('#ac-input').val(data.session.characters[editing].ac);
+                                    $('#init-input').val(data.session.characters[editing].skills.initiative.value);
+                                    for (var s=0;s<SCORES.length;s++) {
+                                        $('#'+SCORES[s][0]+'-score-input').val(data.session.characters[editing].stats[SCORES[s][1]]);
+                                        var mod = getmod(data.session.characters[editing].stats[SCORES[s][1]]);
+                                        if (mod > 0) {
+                                            mod = '+'+mod;
+                                        }
+                                        $('#'+SCORES[s][0]+'-bonus .value').text(mod);
+                                        var mod = getmod(data.session.characters[editing].stats[SCORES[s][1]]);
+                                        if (data.session.characters[editing].saves[SCORES[s][1]+'Save'].prof == 1) {
+                                            mod = mod + data.session.characters[editing].stats.prof_bonus;
+                                        }
+                                        if (mod > 0) {
+                                            mod = '+'+mod;
+                                        }
+                                        $('#'+SCORES[s][0]+'-save .value').text(mod);
+                                    }
+
+                                    for (var s=0;s<SKILLS.length;s++) {
+                                        var mod = data.session.characters[editing].skills[SKILLS[s]].value;
+                                        if (mod > 0) {
+                                            mod = '+'+mod;
+                                        }
+                                        $('#'+SKILLS[s]+'-skill').text(mod);
+                                    }
+                                });
+                            }
+                        );
+                    } else {
+                        $(event.target).val('');
+                    }
+                });
+                $('#ctx_claim-pc').click(function(event){
+                    scmd(
+                        'assign_pc',
+                        [currentCtx],
+                        function(){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
                         }
                     );
                 });
@@ -1369,6 +1577,8 @@
             <button class='ctx-button' id='ctx_set-pc-hp' ctx='set-pc-hp'>Set HP</button>
             <button class='ctx-button' id='ctx_set-pc-max-hp' ctx='set-pc-max-hp'>Set Maximum HP</button>
             <button class='ctx-button' id='ctx_change-pc-hp' ctx='change-pc-hp'>Change HP</button>
+            <button class='ctx-button' id='ctx_edit-pc' ctx='edit-pc'>Edit Statistics</button>
+            <button class='ctx-button' id='ctx_claim-pc' ctx='claim-pc'>Claim Character</button>
         </div>
 
         <div id='cursors-bar'>
@@ -1497,6 +1707,101 @@
                 <div class="npc-icon" id="npc-icon-open5e" name="open5e" style="display: none;"><img src="assets/icons/Dice.png"></div>
             </div>
             <button class='submit-button' id='npc-submit'>Create NPC</button>
+        </div>
+
+        <!-- PC Stat Editor -->
+        <div id='pc-editor' class="large-dialog" editing='null'>
+            <h2>PC Stats Editor</h2>
+            <div id='stats-scores-editor' class='block'>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>STR</th>
+                            <th>DEX</th>
+                            <th>CON</th>
+                            <th>INT</th>
+                            <th>WIS</th>
+                            <th>CHA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr id='scores-row'>
+                            <td><input id='str-score-input' value='0' placeholder="STR" maxlength="2" type="number" min="0" max="30" key='stats.strength'></td>
+                            <td><input id='dex-score-input' value='0' placeholder="DEX" maxlength="2" type="number" min="0" max="30" key='stats.dexterity'></td>
+                            <td><input id='con-score-input' value='0' placeholder="CON" maxlength="2" type="number" min="0" max="30" key='stats.constitution'></td>
+                            <td><input id='int-score-input' value='0' placeholder="INT" maxlength="2" type="number" min="0" max="30" key='stats.intelligence'></td>
+                            <td><input id='wis-score-input' value='0' placeholder="WIS" maxlength="2" type="number" min="0" max="30" key='stats.wisdom'></td>
+                            <td><input id='cha-score-input' value='0' placeholder="CHA" maxlength="2" type="number" min="0" max="30" key='stats.charisma'></td>
+                        </tr>
+                        <tr id='bonus-row' class='view-row'>
+                            <td id='str-bonus'>STR Modifier: <span class='value'>0</span></td>
+                            <td id='dex-bonus'>DEX Modifier: <span class='value'>0</span></td>
+                            <td id='con-bonus'>CON Modifier: <span class='value'>0</span></td>
+                            <td id='int-bonus'>INT Modifier: <span class='value'>0</span></td>
+                            <td id='wis-bonus'>WIS Modifier: <span class='value'>0</span></td>
+                            <td id='cha-bonus'>CHA Modifier: <span class='value'>0</span></td>
+                        </tr>
+                        <tr id='saves-row' class='view-row'>
+                            <td id='str-save'>STR Save: <span class='value'>0</span></td>
+                            <td id='dex-save'>DEX Save: <span class='value'>0</span></td>
+                            <td id='con-save'>CON Save: <span class='value'>0</span></td>
+                            <td id='int-save'>INT Save: <span class='value'>0</span></td>
+                            <td id='wis-save'>WIS Save: <span class='value'>0</span></td>
+                            <td id='cha-save'>CHA Save: <span class='value'>0</span></td>
+                        </tr>
+                        <tr id='skills-1' class='view-row'>
+                            <td>Athletics: <span id='athletics-skill' class='value'>0</span></td>
+                            <td>Acrobatics: <span id='acrobatics-skill' class='value'>0</span></td>
+                            <td> - </td>
+                            <td>Arcana: <span id='arcana-skill' class='value'>0</span></td>
+                            <td>Animal Handling: <span id='animalHandling-skill' class='value'>0</span></td>
+                            <td>Deception: <span id='deception-skill' class='value'>0</span></td>
+                        </tr>
+                        <tr id='skills-2' class='view-row'>
+                            <td> - </td>
+                            <td>Sleight of Hand: <span id='sleightOfHand-skill' class='value'>0</span></td>
+                            <td> - </td>
+                            <td>History: <span id='history-skill' class='value'>0</span></td>
+                            <td>Insight: <span id='insight-skill' class='value'>0</span></td>
+                            <td>Intimidation: <span id='intimidation-skill' class='value'>0</span></td>
+                        </tr>
+                        <tr id='skills-3' class='view-row'>
+                            <td> - </td>
+                            <td>Stealth: <span id='stealth-skill' class='value'>0</span></td>
+                            <td> - </td>
+                            <td>Investigation: <span id='investigation-skill' class='value'>0</span></td>
+                            <td>Medicine: <span id='medicine-skill' class='value'>0</span></td>
+                            <td>Performance: <span id='performance-skill' class='value'>0</span></td>
+                        </tr>
+                        <tr id='skills-4' class='view-row'>
+                            <td> - </td>
+                            <td> - </td>
+                            <td> - </td>
+                            <td>Nature: <span id='nature-skill' class='value'>0</span></td>
+                            <td>Perception: <span id='perception-skill' class='value'>0</span></td>
+                            <td>Persuasion: <span id='persuasion-skill' class='value'>0</span></td>
+                        </tr>
+                        <tr id='skills-5' class='view-row'>
+                            <td> - </td>
+                            <td> - </td>
+                            <td> - </td>
+                            <td>Religion: <span id='religion-skill' class='value'>0</span></td>
+                            <td>Survival: <span id='survival-skill' class='value'>0</span></td>
+                            <td> - </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class='block' id='char-stats'>
+                <h3 style="width: 5%;text-align:center;">HP</h3>
+                <input style="width: 10%; text-align: center;" id="hp-input" placeholder="0" type="number" min='0' max='9999999' value='0' key='hp'>
+                <h3 style="width: 3%;text-align:center;">/</h3>
+                <input style="width: 10%; text-align: center;" id="max-hp-input" placeholder="0" type="number" min='0' max='9999999' value='0' key='max_hp'>
+                <h3 style="width: 5%;text-align:center;">AC</h3>
+                <input style="width: 10%; text-align: center;" id="ac-input" placeholder="0" type="number" min='0' max='50' value='0' key='ac'>
+                <h3 style="width: 20%;text-align:center;">Initiative</h3>
+                <input style="width: 10%; text-align: center;" id="init-input" placeholder="0" type="number" value='0' min='-9999999' max='9999999' key='skills.initiative.value'>
+            </div>
         </div>
 
         <!-- Multi-purpose selection box -->

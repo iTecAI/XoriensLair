@@ -24,6 +24,8 @@ class Session:
             for k in self.characters.keys():
                 if type(self.characters[k]) == str:
                     self.characters[k] = Character(_json=self.characters[k])
+                else:
+                    self.characters[k] = Character(_json=self.characters[k])
         else:
             self.maps = []
             self.characters = {}
@@ -156,12 +158,12 @@ class Session:
                     return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
     
-    def modify_pc(self,fp,args): # [ID, Icon, HP, Max HP, Name]
+    def modify_pc(self,fp,args): # [ID, Icon, List of keys and values ([['key1|key2|key3','value'],['key4|key5','value']])]
         if str(args[1]) != '-1':
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
                     self.maps[m]['characters'][args[0]]['icon'] = args[1]
-        if str(args[2]) != '-1':
+        '''if str(args[2]) != '-1':
             self.characters[args[0]]['hp'] = int(args[2])
         if str(args[3]) != '-1':
             self.characters[args[0]]['max_hp'] = int(args[3])
@@ -169,8 +171,21 @@ class Session:
             self.characters[args[0]]['name'] = args[4]
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
-                    self.maps[m]['characters'][args[0]]['name'] = args[4]
-        return {'code':200,'data':json.loads(self.characters[args[0]].to_json())}
+                    self.maps[m]['characters'][args[0]]['name'] = args[4]'''
+        outcomes = {}
+        for i in eval(args[2]):
+            try:
+                try:
+                    val = str(int(i[1]))
+                except ValueError:
+                    val = '"'+str(i[1])+'"'
+                exec('self.characters[args[0]]["'+'"]["'.join(i[0].split('.'))+'"] = '+val)
+                outcomes[i[0]] = 1
+            except KeyError:
+                outcomes[i[0]] = 0
+            except IndexError:
+                outcomes[i[0]] = 0
+        return {'code':200,'data':json.loads(self.characters[args[0]].to_json()),'outcomes':outcomes}
     
     def deactivate_pc(self,fp,args): # [Map ID]
         for i in range(len(self.maps)):
@@ -191,6 +206,20 @@ class Session:
                 else:
                     return {'code':404,'reason':'Character not found.'}
         return {'code':404,'reason':'Map not found.'}
+    
+    def assign_pc(self,fp,args): # [Old ID]
+        if args[0] in self.characters.keys():
+            self.characters[fp] = self.characters[args[0]]
+            self.character_urls[fp] = self.character_urls[args[0]]
+            del self.characters[args[0]]
+            del self.character_urls[args[0]]
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['characters'].keys():
+                    self.maps[m]['characters'][fp] = self.maps[m]['characters'][args[0]]
+                    del self.maps[m]['characters'][args[0]]
+            return {'code':200}
+        else:
+            return {'code':404,'reason':'Character not found'}
 
     def open5e(self,fp,args): 
 
@@ -371,6 +400,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         # Sets up the API instance
         self.sessions = {}
         self.users = []
+        self.u_expire = {}
 
     def new_session(self,data): # name, password, id, fingerprint, OPTIONAL session data
         # Creates a new session and adds the user that creates it as a DM
@@ -387,10 +417,12 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                      {
                         'name':'Dungeon Master',
                         'fingerprint':data['fingerprint'],
-                        'type':'dm'
+                        'type':'dm',
+                        'active':True
                     }
                 ]
             }
+            self.u_expire[data['fingerprint']] = time.time()+30
         else:
             self.sessions[data['id']] = {
                 'name':data['name'],
@@ -401,10 +433,12 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                      {
                         'name':'Dungeon Master',
                         'fingerprint':data['fingerprint'],
-                        'type':'dm'
+                        'type':'dm',
+                        'active':True
                     }
                 ]
             }
+            self.u_expire[data['fingerprint']] = time.time()+30
         code, r = self.check_user({'fingerprint':data['fingerprint']})
         return code, r
     
@@ -417,8 +451,10 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 self.sessions[data['id']]['users'].append({
                     'name':data['name'],
                     'fingerprint':data['fingerprint'],
-                    'type':'pc'
+                    'type':'pc',
+                    'active':True
                 })
+                self.u_expire[data['fingerprint']] = time.time()+30
                 code, r = self.check_user({'fingerprint':data['fingerprint']})
                 return code, r
             return 200, {'code':403}
@@ -471,8 +507,13 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         # Get information relating to the session
         if data['sid'] in self.sessions.keys():
             usersDict = {}
+            c = 0
             for i in self.sessions[data['sid']]['users']:
                 usersDict[i['fingerprint']] = i
+                if self.sessions[data['sid']]['users'][c]['fingerprint'] == data['print']:
+                    self.u_expire[data['print']] = time.time()+30
+                    self.sessions[data['sid']]['users'][c]['active'] = True
+                c += 1
             
             self.sessions[data['sid']]['expire'] = datetime.datetime.now()+datetime.timedelta(days=14)
 
@@ -521,6 +562,11 @@ def check_all():
         for i in instance.sessions.keys():
             if instance.sessions[i]['expire'] <= datetime.datetime.now()+datetime.timedelta(days=14):
                 nse[i] = instance.sessions[i]
+                for u in range(len(instance.sessions[i]['users'])):
+                    if instance.u_expire[instance.sessions[i]['users'][u]['fingerprint']] < time.time():
+                        instance.sessions[i]['users'][u]['active'] = False
+                        print(instance.sessions[i]['users'][u]['fingerprint'] + ' lost connection.')
+
         instance.sessions = nse
         time.sleep(60)
             

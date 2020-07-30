@@ -12,6 +12,7 @@
     "deactivate_pc_dm":"dm",
     "move_pc":"pc",
     "modify_pc":"pc,dm",
+    "assign_pc":"pc",
     "open5e":"pc,dm",
     "add_npc":"dm",
     "modify_npc":"dm",

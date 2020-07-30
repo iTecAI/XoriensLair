@@ -35,7 +35,10 @@ class Character:
         elif gurl:
             self.chardata = json.loads(gsheet_getJSON(gurl))
         else:
-            self.chardata = json.loads(_json)
+            if type(_json) == str:
+                self.chardata = json.loads(_json)
+            else:
+                self.chardata = _json
         for key in list(self.chardata['stats'].keys()):
             if key != 'prof_bonus':
                 self['stats'][key+'_bonus'] = get_mod(self['stats'][key])

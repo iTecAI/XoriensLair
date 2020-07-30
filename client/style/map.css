@@ -563,3 +563,64 @@ html {
     margin-top: 5px;
     z-index: 1500;
 }
+
+#stats-scores-editor table, #stats-scores-editor thead, #stats-scores-editor tbody {
+    width: 100%;
+    background-color: lightgray;
+    table-layout: fixed;
+}
+
+tr {
+    display: inline-block;
+    width: 100%;
+    background-color: lightgray;
+}
+
+#stats-scores-editor > table td, #stats-scores-editor > table th {
+    display: flexbox;
+    width: calc(100%/6);
+    margin: 0px;
+    margin-right: -0.5%;
+    box-sizing: border-box;
+    font-family: roboto;
+    border-right: 1px solid gray;
+    border-bottom: 1px solid gray;
+    padding-left: 0px;
+    padding-right: 0px;
+    border-collapse: collapse;
+}
+
+#stats-scores-editor tbody input {
+    width: 96%;
+    height: 96%;
+    margin: 2%;
+    border: 0px;
+    border-radius: 0px;
+    box-sizing: border-box;
+    text-align: center;
+}
+
+#stats-scores-editor tbody input::-webkit-outer-spin-button,
+#stats-scores-editor tbody input::-webkit-inner-spin-button {
+  margin: -7px;
+}
+
+.view-row td {
+    text-align: center;
+    height: 5vh;
+    padding-top: 1vh;
+    font-family: roboto;
+    font-size:1.3vh;
+}
+
+#scores-row {
+    border-bottom: 2px solid gray;
+}
+
+#bonus-row {
+    border-bottom: 2px solid gray;
+}
+
+#saves-row {
+    border-bottom: 2px solid gray;
+}
