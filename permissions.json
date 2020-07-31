@@ -17,5 +17,6 @@
     "add_npc":"dm",
     "modify_npc":"dm",
     "remove_npc":"dm",
-    "initiative":"pc,dm"
+    "initiative":"pc,dm",
+    "delete_user":"dm"
 }

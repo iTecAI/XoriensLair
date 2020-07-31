@@ -315,6 +315,9 @@
                 if (data == undefined) {
                     data = {'code':200};
                 }
+                if (data.code == 404) {
+                    window.location = '/';
+                }
 
                 if ((JSON.stringify(data) != JSON.stringify(previousData) && data.code == 200)) {
                     if (Object.keys(data).length <= 1) {
@@ -345,25 +348,6 @@
                         }
                     );
 
-                    // Update player listing
-                    var elbox = document.getElementById('user-area');
-                    elbox.innerHTML = '';
-
-                    var keys = Object.keys(previousData.users);
-
-                    for (var k=0;k<keys.length;k++) {
-                        if (previousData.users[keys[k]].active) {
-                            var newElement = document.createElement('div');
-                            newElement.id = 'user-'+previousData.users[keys[k]].fingerprint;
-                            newElement.innerText = previousData.users[keys[k]].name;
-                            newElement.className = 'noselect'
-                            if (previousData.users[keys[k]].type == 'dm') {
-                                newElement.style = 'border-left: 4px solid rgb(255, 47, 10);';
-                            }
-                            elbox.appendChild(newElement);
-                        }
-                    }
-
                     if (previousData.users[BrowserFingerprint].type == 'dm') {
                         uType = 'dm';
                         $('#player-buttons').css('display','none');
@@ -373,6 +357,56 @@
                         $('#dm-buttons').css('display','none');
                         $('#player-buttons').css('display','block');
                     }
+
+                    // Update player listing
+                    var elbox = document.getElementById('user-area');
+                    elbox.innerHTML = '';
+
+                    var keys = Object.keys(previousData.users);
+
+                    for (var k=0;k<keys.length;k++) {
+                        var newElement = document.createElement('div');
+                        newElement.id = 'user-'+previousData.users[keys[k]].fingerprint;
+                        newElement.innerText = previousData.users[keys[k]].name;
+                        newElement.className = 'noselect user-card'
+                        if (previousData.users[keys[k]].type == 'dm') {
+                            newElement.style = 'border-left: 4px solid rgb(255, 47, 10);';
+                        }
+                        if (!previousData.users[keys[k]].active) {
+                            $(newElement).addClass('user-inactive');
+                            $(newElement).css('color','rgb(150,150,150)');
+                            if (uType == 'dm') {
+                                $(newElement).append($(
+                                    '<button data-tooltip="Delete User" data-tooltip-location="right" class="user-delete user-button" name="'+previousData.users[keys[k]].fingerprint+'" id="card_delete_'+previousData.users[keys[k]].fingerprint+'"><img src="assets/delete.png"></button>'
+                                ).click(function(event){
+                                    scmd(
+                                        'delete_user',
+                                        [$(event.delegateTarget).attr('name')],
+                                        function (data) {
+                                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                        }
+                                    );
+                                }));
+                            } else {
+                                if (previousData.users[keys[k]].type == 'pc') {
+                                    $(newElement).append($(
+                                        '<button data-tooltip="Claim User" data-tooltip-location="right" class="user-claim user-button" name="'+previousData.users[keys[k]].fingerprint+'" id="card_claim_'+previousData.users[keys[k]].fingerprint+'"><img src="assets/avatar.png"></button>'
+                                    ).click(function(event){
+                                        scmd(
+                                            'assign_pc',
+                                            [$(event.delegateTarget).attr('name')],
+                                            function (data) {
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                            }
+                                        );
+                                    }));
+                                }
+                            }
+
+                        }
+                        elbox.appendChild(newElement);
+                    }
+
                     $('#session-name').text('Session Name: '+previousData.name);
 
                     // Hide or show user-type specific elements
@@ -1097,6 +1131,25 @@
                                             }
                                         } else {
                                             $(children[c]).toggleClass('active',true);
+                                            var res = true;
+                                            if (ctxModifiers.split(',').includes('self') && uType == 'pc' ) {
+                                                if (currentCtx == BrowserFingerprint) {
+                                                    $(children[c]).toggleClass('active',res);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                                checked = true;
+                                            } 
+                                            if (ctxModifiers.split(',').includes('!self') && uType == 'pc' ) {
+                                                if (currentCtx != BrowserFingerprint && $('#'+currentCtx).hasClass('pc-icon')) {
+                                                    $(children[c]).toggleClass('active',res);
+                                                    ct++;
+                                                } else {
+                                                    $(children[c]).toggleClass('active',false);
+                                                }
+                                                checked = true;
+                                            }
                                         }
                                         checked = true
                                     }

@@ -245,6 +245,34 @@ html {
     border-radius: 0 4px 4px 0;
 }
 
+.user-button {
+    display: block;
+    width: 5vw;
+    background-color: rgb(50, 46, 61);
+    transition: background-color 0.1s, width 0.1s, border-radius 0.1s;
+    border: none;
+    margin-bottom: -1vh;
+    padding: 1vh;
+}
+
+.user-button:hover {
+    background-color: rgb(50, 46, 61);
+}
+
+#user-area div:hover .user-button, #user-area div:focus .user-button {
+    width: 5.3vw;
+    background-color: rgb(40, 37, 49);
+}
+
+#user-area div:hover .user-button:hover, #user-area div:focus .user-button:hover {
+    background-color: rgb(32, 29, 39);
+    border-bottom-right-radius: 4px;
+}
+.user-button img {
+    width: 3vh;
+    height: 3vh;
+}
+
 #icon-attribution {
     position: absolute;
     bottom: 0px;

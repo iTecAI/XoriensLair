@@ -2,6 +2,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from subprocess import Popen
 import json
 import urllib.parse
+import os
+
+import logging
+import logging.config
+logging.config.fileConfig(os.path.join('api','pylink','logging.conf'))
 
 def process_requestline(line):
     # b'command=test&kwargs%5Btest%5D=1'
@@ -17,20 +22,26 @@ def make_handler(_link):
         link = _link
         def __init__(self,request, client_address, server):
             super().__init__(request, client_address, server)
+            self.link = _link
 
         def do_POST(self):
-            command_json = process_requestline(self.rfile.read(int(self.headers['Content-Length'])))
             try:
-                code, data = Handler.link.commands[command_json['command']](command_json['kwargs'])
-                self.send_response(code)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin','*')
-                self.end_headers()
-                self.wfile.write(bytes(json.dumps(data),'utf-8'))
-            except KeyError:
-                self.send_response(404)
-                self.send_header('Access-Control-Allow-Origin','*')
-                self.end_headers()
+                command_json = process_requestline(self.rfile.read(int(self.headers['Content-Length'])))
+                try:
+                    code, data = Handler.link.commands[command_json['command']](command_json['kwargs'])
+                    self.send_response(code)
+                    self.send_header('Content-type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin','*')
+                    self.end_headers()
+                    self.wfile.write(bytes(json.dumps(data),'utf-8'))
+                except KeyError:
+                    self.send_response(404)
+                    self.send_header('Access-Control-Allow-Origin','*')
+                    self.end_headers()
+            except ConnectionAbortedError:
+                self.link.logger.error('Client connection aborted. Client: '+self.client_address[0]+':'+str(self.client_address[1]))
+            except:
+                self.link.logger.exception('Link Error')
         def log_message(self, format, *args):
             return
     return Handler
@@ -38,6 +49,7 @@ def make_handler(_link):
 class PyLink:
     def __init__(self,ip,server_port,api_port,directory=None,python_path='python',server_path='server.py',**commands):
         self.server = None
+        self.logger = logging.getLogger('root')
         self.api = HTTPServer((ip,api_port),make_handler(self))
         self.commands = commands
         self.python_path = python_path
@@ -48,4 +60,5 @@ class PyLink:
     
     def serve_forever(self):
         self.server = Popen([self.python_path,self.server_path,self.ip,str(self.server_port),str(self.directory)])
+        self.logger.debug('Webserver launched, launching API server')
         self.api.serve_forever()

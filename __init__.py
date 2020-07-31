@@ -26,9 +26,9 @@ LOGMODE = 'debug'
 MAX_LOG_SIZE = 10000000 # Max log size 10 MB
 
 class Session:
-    def __init__(self,instance,session=None,name='None'):
+    def __init__(self,instance,_id,session=None,name='None'):
         self.logger = logging.LoggerAdapter(logging.getLogger('session_'+LOGMODE),{'sessionname':name})
-
+        self.id = _id
         if session:
             self.logger.debug('Loaded session from file.')
             session = json.loads(session)
@@ -93,7 +93,7 @@ class Session:
             return self.load_sheet(fp,[self.character_urls[fp]])
             self.logger.debug('Updated sheet for '+fp)
         else:
-            self.logger.warn('Failure to update sheet for '+fp)
+            self.logger.warning('Failure to update sheet for '+fp)
             return {'code':404,'reason':'PC not found. Load a sheet.'}
             
     
@@ -124,7 +124,7 @@ class Session:
             if self.maps[i]['id'] == _id:
                 del self.maps[i]
                 return {'code':200}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
@@ -138,7 +138,7 @@ class Session:
                 }
                 self.maps[i]['active'] = args[4]
                 return {'code':200}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def obscure(self,fp,args): # [Map ID, Top Corner X, Top Corner Y, Width, Height, Obscuration ID]
@@ -151,7 +151,7 @@ class Session:
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['obscuration'][args[5]] = [args[1],args[2],args[3],args[4]]
                 return {'code':200}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def remove_obscure(self,fp,args): # [Map ID, Obscuration ID]
@@ -162,9 +162,9 @@ class Session:
                     del self.maps[i]['obscuration'][args[1]]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - Obscure not found. User '+fp)
+                    self.logger.warning('User error - Obscure not found. User '+fp)
                     return {'code':404,'reason':'Obscure not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def activate_pc(self,fp,args): # [Map ID, Icon Name or Data URL, X, Y]
@@ -178,7 +178,7 @@ class Session:
                 }
                 self.logger.debug('Activated '+self.characters[fp]['name']+' on map '+args[0]+' for user '+fp)
                 return {'code':200}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def move_pc(self,fp,args): # [Map ID, X, Y]
@@ -189,15 +189,15 @@ class Session:
                     self.maps[i]['characters'][fp]['pos'] = [int(float(args[1])),int(float(args[2]))]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - Character not found. User '+fp)
+                    self.logger.warning('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def modify_pc(self,fp,args): # [ID, Icon, List of keys and values ([['key1|key2|key3','value'],['key4|key5','value']])]
         self.logger.debug('Modifying PC '+args[0]+' with '+args[2])
         if (not args[0] in self.characters.keys()):
-            self.logger.warn('User error - Character not found. User '+fp)
+            self.logger.warning('User error - Character not found. User '+fp)
             return {'code':404,'reason':'Character not found.'}
         if str(args[1]) != '-1':
             for m in range(len(self.maps)):
@@ -235,9 +235,9 @@ class Session:
                     del self.maps[i]['characters'][fp]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - Character not found. User '+fp)
+                    self.logger.warning('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def deactivate_pc_dm(self,fp,args): # [Map ID, PC ID]
@@ -248,13 +248,19 @@ class Session:
                     del self.maps[i]['characters'][args[1]]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - Character not found. User '+fp)
+                    self.logger.warning('User error - Character not found. User '+fp)
                     return {'code':404,'reason':'Character not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def assign_pc(self,fp,args): # [Old ID]
+        found = False
         self.logger.debug('Assigning PC with ID '+args[0]+' to '+fp)
+        for u in range(len(self.instance.sessions[self.id]['users'])):
+            if self.instance.sessions[self.id]['users'][u]['fingerprint'] == args[0]:
+                del self.instance.sessions[self.id]['users'][u]
+                found = True
+                break
         if args[0] in self.characters.keys():
             self.characters[fp] = self.characters[args[0]]
             self.character_urls[fp] = self.character_urls[args[0]]
@@ -264,10 +270,11 @@ class Session:
                 if args[0] in self.maps[m]['characters'].keys():
                     self.maps[m]['characters'][fp] = self.maps[m]['characters'][args[0]]
                     del self.maps[m]['characters'][args[0]]
+        if found:
             return {'code':200}
-        else:
-            self.logger.warn('User error - Character not found. User '+fp)
-            return {'code':404,'reason':'Character not found'}
+        self.logger.warning('User error - Character not found. User '+fp)
+        return {'code':404,'reason':'Character not found'}
+            
 
     def open5e(self,fp,args): 
 
@@ -310,7 +317,7 @@ class Session:
                     'hp':int(json.loads(args[2])['hit_points'])
                 }
                 return {'code':200}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
   
     def modify_npc(self,fp,args): # [Map ID, NPC ID, Data, Current HP, X, Y]
@@ -323,9 +330,9 @@ class Session:
                     self.maps[i]['npcs'][args[1]]['pos'] = [int(args[4]),int(args[5])]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - NPC not found. User '+fp)
+                    self.logger.warning('User error - NPC not found. User '+fp)
                     return {'code':404,'reason':'NPC not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
 
     def remove_npc(self,fp,args): # [Map ID, NPC ID]
@@ -336,9 +343,9 @@ class Session:
                     del self.maps[i]['npcs'][args[1]]
                     return {'code':200}
                 else:
-                    self.logger.warn('User error - NPC not found. User '+fp)
+                    self.logger.warning('User error - NPC not found. User '+fp)
                     return {'code':404,'reason':'NPC not found.'}
-        self.logger.warn('User error - Map not found. User '+fp)
+        self.logger.warning('User error - Map not found. User '+fp)
         return {'code':404,'reason':'Map not found.'}
     
     def initiative(self,fp,args): # [Command, Map ID, NPC ID if applicable (otherwise -1)]
@@ -444,6 +451,23 @@ class Session:
             }
             return {'code':200}
         return {'code':404,'reason':'Command not found or forbidden'}
+    
+    def delete_user(self,fp,args): # [User ID]
+        self.logger.debug('Removing PC with ID '+args[0])
+        if args[0] in self.characters.keys():
+            del self.characters[args[0]]
+            del self.character_urls[args[0]]
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['characters'].keys():
+                    del self.maps[m]['characters'][args[0]]
+        for u in range(len(self.instance.sessions[self.id]['users'])):
+            if self.instance.sessions[self.id]['users'][u]['fingerprint'] == args[0]:
+                del self.instance.sessions[self.id]['users'][u]
+                return {'code':200}
+        
+        self.logger.warning('User error - Character not found. User '+fp)
+        return {'code':404,'reason':'Character not found'}
+            
         
 
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets
@@ -465,7 +489,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(self,session=data['session'],name=data['name']),
+                'instance':Session(self,data['id'],session=data['session'],name=data['name']),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {
@@ -482,7 +506,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
-                'instance':Session(self,name=data['name']),
+                'instance':Session(self,data['id'],name=data['name']),
                 'expire':datetime.datetime.now()+datetime.timedelta(days=14),
                 'users':[
                      {
@@ -513,9 +537,9 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 self.u_expire[data['fingerprint']] = time.time()+30
                 code, r = self.check_user({'fingerprint':data['fingerprint']})
                 return code, r
-            self.logger.warn('User',data['fingerprint'],'tried to join session',data['id'],'with incorrect password',data['password'])
+            self.logger.warning('User',data['fingerprint'],'tried to join session',data['id'],'with incorrect password',data['password'])
             return 200, {'code':403}
-        self.logger.warn('User',data['fingerprint'],'tried to join nonexistent session with ID',data['id'])
+        self.logger.warning('User',data['fingerprint'],'tried to join nonexistent session with ID',data['id'])
         return 200, {'code':404}
     
     def check_user(self,data): # fingerprint
@@ -559,10 +583,10 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     if dat['type'] in pdict[data['command']].split(','):
                         return 200, getattr(self.sessions[data['sid']]['instance'],data['command'])(data['fingerprint'],data['args'].split('|'))
                     else:
-                        self.logger.warn('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Access denied to command.')
+                        self.logger.warning('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Access denied to command.')
                         return 200, {'code':403,'reason':'Forbidden: User does not have access to the command "'+data['command']+'".'}
                 else:
-                    self.logger.warn('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Command not found.')
+                    self.logger.warning('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Command not found.')
                     return 200, {'code':404,'reason':'Not Found: Command "'+data['command']+'" not found.'}
         else:
             self.logger.error('User '+data['fingerprint']+' failed to execute '+data['command']+' on session '+data['sid']+' - Access denied to session.')
@@ -603,7 +627,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             self.sessions[data['sid']]['password'] = data['newpass']
             return 200, {'code':200}
         else:
-            self.logger.warn('User '+data['fingerprint']+' failed to modify session '+data['sid']+' - No access.')
+            self.logger.warning('User '+data['fingerprint']+' failed to modify session '+data['sid']+' - No access.')
             return 200, {'code':403,'reason':'You don\'t have access to this feature in this server.'}
     
     def purge_session(self,data): # sid, fingerprint
