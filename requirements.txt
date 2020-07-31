@@ -11,3 +11,4 @@ python-Levenshtein
 bson
 gspread
 dice
+yarl==1.4.2

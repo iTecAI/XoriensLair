@@ -83,7 +83,7 @@ class Session:
         self.logger.debug('Saved session.')
         return {'save':self.jsonify()}
 
-    def load_sheet(self,fp,args): # [URL or Beyond ID]
+    def load_sheet(self,fp,args): # [URL]
         self.logger.debug('Loading sheet with URL '+args[0]+' for '+fp)
         url = args[0]
         if url.startswith('https://docs.google.com/spreadsheets'):
