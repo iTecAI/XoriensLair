@@ -91,7 +91,7 @@ class Session:
         elif url.startswith('{'):
             char = Character(_json=url)
         else:
-            char = Character(ddbid=url)
+            pass
         self.characters[fp] = char
         self.character_urls[fp] = url
         self.character_icons[fp] = 'Dice'

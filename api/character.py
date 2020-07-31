@@ -1,4 +1,4 @@
-from api.avrae.cogs5e.sheets.beyond import getJSON as beyond_getJSON
+#from api.avrae.cogs5e.sheets.beyond import getJSON as beyond_getJSON
 from api.avrae.cogs5e.sheets.gsheet import getJSON_gsheet as gsheet_getJSON
 import json
 from api.dndutil import *
@@ -29,10 +29,8 @@ def get_mod(score):
     return None
 
 class Character:
-    def __init__(self,ddbid=None,gurl=None,_json=None):
-        if ddbid:
-            self.chardata = json.loads(beyond_getJSON(ddbid))
-        elif gurl:
+    def __init__(self,gurl=None,_json=None):
+        if gurl:
             self.chardata = json.loads(gsheet_getJSON(gurl))
         else:
             if type(_json) == str:
