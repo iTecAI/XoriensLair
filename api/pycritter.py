@@ -1,4 +1,6 @@
-import requests
+import requests, json, re
+from threading import Thread
+import time
 
 _token = None
 user_id = None
@@ -62,8 +64,8 @@ def get_bestiary(id):
 
 def get_bestiary_creatures(id):
     return error(requests.get(
-        url=_url('/bestiaries/' + id + '/creatures'),
-        headers={'x-access-token': token}
+        url=_url('/bestiaries/' + id + '/creatures')
+        #headers={'x-access-token': token}
         ))
 
 
@@ -348,6 +350,27 @@ class Item: #Item class from accessapi code
             else:
                 setattr(self,d,dct[d])
 
+def action_parse(action): # Parse an action string
+    try:
+        if action['desc'].startswith('<i>Melee Weapon Attack:</i>') or action['desc'].startswith('<i>Ranged Weapon Attack:</i>'):
+            initial_parse = [i.strip() for i in re.split(r'<i>.{0,50}</i>',action['desc'])[1:]]
+            info = {}
+            info['attack'] = [i.strip('.,+ ') for i in initial_parse[0].split(', ')][:2]
+            info['damage'] = [i.strip('., ') for i in initial_parse[1].split(' plus ')]
+            
+            ret = action
+            ret['attack_bonus'] = int(info['attack'][0].split(' ')[0])
+            rollstr = []
+            for i in info['damage']:
+                rollstr.append(re.split(r'\).{0,1000}',re.split(r'.{0,50}\(',i)[1])[0].replace(' ',''))
+            ret['damage_dice'] = '+'.join(rollstr)
+
+            return ret
+        else:
+            return action
+    except:
+        return action
+
 def get_mod(score): #code from character to translate a score into a modifier
     modref = {
         '1':-5,
@@ -402,81 +425,119 @@ def get_skill_ability(skill): #gets ability of specific skill
         if skill in s[1]:
             return s[0]
 
-class Creature: #class to translate CritterDB JSON structure into standard structure based on Open5e
-    def __init__(self,ID):
+def api_get_creature(ID=None,_dict=None,instance=None):
+    if ID:
         item = Item(get_creature(ID)) #create item for easy access
+    elif _dict:
+        item = Item(_dict)
+    else:
+        raise ValueError('Input ID or _dict')
+    
+    output = {}
+    #manual item assignment =======================================================================
+    #determine raw attributes
+    output['name'] = item.name
+    output['slug'] = item.name.lower()
+    output['size'] = item.stats.size
+    output['type'] = str(item.stats.race).lower()
+    output['alignment'] = str(item.stats.alignment).lower()
+    output['armor_class'] = item.stats.armorClass
+    output['armor_desc'] = str(item.stats.armorType).lower()
+    output['challenge_rating'] = str(Fraction.from_float(item.stats.challengeRating))
+    prof = item.stats.proficiencyBonus
 
-        #manual item assignment =======================================================================
-        #determine raw attributes
-        self.name = item.name
-        self.size = item.stats.size
-        self.type = str(item.stats.race).lower()
-        self.alignment = str(item.stats.alignment).lower()
-        self.armor_class = item.stats.armorClass
-        self.armor_type = str(item.stats.armorType).lower()
-        self.challenge_rating = str(Fraction.from_float(item.stats.challengeRating))
-        prof = get_prof_cr(item.stats.challengeRating)
-
-        #determine HP & HD
-        self.hit_points = int((item.stats.numHitDie*item.stats.hitDieSize)*0.5)+(get_mod(item.stats.abilityScores.strength)*item.stats.numHitDie)
-        self.hit_dice = str(item.stats.numHitDie)+'d'+str(item.stats.hitDieSize)+'+'+str((get_mod(item.stats.abilityScores.strength)*item.stats.numHitDie))
-        
-        #parse speed string
-        speed_dict = {}
-        for i in item.stats.speed.split(', '):
-            info = i[:len(i)-4].split(' ')
-            if len(info) == 1:
+    #determine HP & HD
+    output['hit_points'] = int((item.stats.numHitDie*item.stats.hitDieSize)*0.5)+(get_mod(item.stats.abilityScores.strength)*item.stats.numHitDie)
+    output['hit_dice'] = str(item.stats.numHitDie)+'d'+str(item.stats.hitDieSize)+'+'+str((get_mod(item.stats.abilityScores.strength)*item.stats.numHitDie))
+    
+    #parse speed string
+    speed_dict = {}
+    for i in item.stats.speed.split(', '):
+        info = i[:len(i)-4].split(' ')
+        if len(info) == 1:
+            try:
                 speed_dict['walk'] = int(info[0])
-            else:
-                speed_dict[info[0]] = int(info[1])
-        self.speed = Item(speed_dict)
-        for i in item.stats.abilityScores.dct.keys():
-            setattr(self,i,item.stats.abilityScores.dct[i])
-        
-        #generate saves
-        saves = {}
-        for i in list(item.stats.savingThrows):
-            if i.proficient:
-                saves[i.ability] = get_mod(item.stats.abilityScores.dct[i.ability]) + prof
-            else:
-                saves[i.ability] = get_mod(item.stats.abilityScores.dct[i.ability])
-        for i in item.stats.abilityScores.dct.keys():
-            if i in saves.keys():
-                setattr(self,i+'_save',saves[i])
-            else:
-                setattr(self,i+'_save',None)
-        
-        #generate skills
-        skills = {}
-        for i in list(item.stats.skills):
-            if i.proficient:
-                skills[i.name.lower()] = get_mod(item.stats.abilityScores.dct[get_skill_ability(i.name.lower())]) + prof
-            else:
-                skills[i.name.lower()] = get_mod(item.stats.abilityScores.dct[get_skill_ability(i.name.lower())])
-        self.skills = Item(skills)
-
-        #determine perception bonus
-        if 'perception' in skills.keys():
-            self.perception = 10 + self.skills.perception
+            except ValueError:
+                speed_dict['walk'] = info[0]
         else:
-            self.perception = 10
-        
-        #assemble senses
-        self.senses = ', '.join(list(item.stats.senses))
+            try:
+                speed_dict[info[0]] = int(info[1])
+            except ValueError:
+                speed_dict[info[0]] = info[1]
+    output['speed'] = speed_dict
+    for i in item.stats.abilityScores.dct.keys():
+        output[i] = item.stats.abilityScores.dct[i]
+    
+    #generate saves
+    saves = {}
+    for i in list(item.stats.savingThrows):
+        if i.proficient:
+            saves[i.ability] = get_mod(item.stats.abilityScores.dct[i.ability]) + prof
+        else:
+            saves[i.ability] = get_mod(item.stats.abilityScores.dct[i.ability])
+    for i in item.stats.abilityScores.dct.keys():
+        if i in saves.keys():
+            output[i+'_save'] = saves[i]
+        else:
+            output[i+'_save'] = None
+    
+    #generate skills
+    skills = {}
+    for i in list(item.stats.skills):
+        if i.proficient:
+            name = i.name.lower().replace(' ','_')
+            skills[name] = get_mod(item.stats.abilityScores.dct[get_skill_ability(name)]) + prof
+        else:
+            skills[i.name.lower()] = get_mod(item.stats.abilityScores.dct[get_skill_ability(i.name.lower())])
+    output['skills'] = skills
 
-        #describe abilities
-        self.actions = []
-        for i in list(item.stats.actions):
-            self.actions.append(Item({'name':i.name,'desc':i.description}))
-        self.special_abilities = []
-        for i in list(item.stats.actions):
-            self.special_abilities.append(Item({'name':i.name,'desc':i.description}))
-        self.reactions = []
-        for i in list(item.stats.actions):
-            self.reactions.append(Item({'name':i.name,'desc':i.description}))
-        self.legendary_actions = []
-        for i in list(item.stats.actions):
-            self.legendary_actions.append(Item({'name':i.name,'desc':i.description}))
+    #determine perception bonus
+    if 'perception' in skills.keys():
+        output['perception'] = 10 + output['skills']['perception']
+    else:
+        output['perception'] = 10
+    
+    #assemble senses
+    output['senses'] = ', '.join(list(item.stats.senses))
 
-            
+    #describe abilities
+    output['actions'] = []
+    for i in list(item.stats.actions):
+        output['actions'].append(action_parse({'name':i.name,'desc':i.description}))
+    output['special_abilities'] = []
+    for i in list(item.stats.additionalAbilities):
+        output['special_abilities'].append({'name':i.name,'desc':i.description})
+    output['reactions'] = []
+    for i in list(item.stats.reactions):
+        output['reactions'].append({'name':i.name,'desc':i.description})
+    output['legendary_actions'] = []
+    for i in list(item.stats.legendaryActions):
+        output['legendary_actions'].append({'name':i.name,'desc':i.description})
+    
+    if instance:
+        instance.result = output
+    return output
 
+class Timeout:
+    def __init__(self,f,_time=2,args=[],kwargs={}):
+        self.result = None
+        kwargs['instance'] = self
+        self.thread = Thread(target=f,args=args,kwargs=kwargs)
+        self.thread.start()
+        c = 0
+        while c < _time*100 and not self.result:
+            time.sleep(0.01)
+            c+=1
+
+
+def api_get_bestiary(ID):
+    creatures = get_bestiary_creatures(ID)
+    ret = []
+    for creature in creatures:
+        ret.append(Timeout(api_get_creature,kwargs={'_dict':creature}).result)
+    return ret
+
+if __name__ == "__main__":
+    with open('bestiary.json','w') as f:
+        #json.dump(api_get_creature('5ed28cc663a0580dfd7cf4d2'),f)
+        json.dump(get_creature('5ed28cc663a0580dfd7cf4d2'),f)

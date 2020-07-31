@@ -2,13 +2,7 @@ import os, time, shutil
 if not os.path.exists(os.path.join('logs','dump')):
     os.makedirs(os.path.join('logs','dump'))
 
-if os.path.exists(os.path.join('logs','latest.log')):
-    fname = os.path.join('logs','dump','historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
-    with open(fname,'w') as f:
-        pass
-    shutil.copy(os.path.join('logs','latest.log'),fname)
-    with open(os.path.join('logs','latest.log'),'w') as f:
-        f.write('')
+os.environ['NUMEXPR_MAX_THREADS'] = '16'
 
 from api import *
 import base64
@@ -20,6 +14,7 @@ from random import random,randint
 import pickle
 import logging
 import logging.config
+from urllib.parse import urlparse
 
 # options
 IP = 'localhost'
@@ -43,6 +38,7 @@ class Session:
             self.characters = session['characters']
             self.character_urls = session['character_urls']
             self.character_icons = session['character_icons']
+            self.homebrew = session['homebrew']
             for k in self.characters.keys():
                 if type(self.characters[k]) == str:
                     self.characters[k] = Character(_json=self.characters[k])
@@ -54,6 +50,7 @@ class Session:
             self.characters = {}
             self.character_urls = {}
             self.character_icons = {}
+            self.homebrew = []
         
         self.initiative_data = {
             'active':False,
@@ -78,7 +75,8 @@ class Session:
             'characters':ndct,
             'character_urls':self.character_urls,
             'character_icons':self.character_icons,
-            'initiative':self.initiative_data
+            'initiative':self.initiative_data,
+            'homebrew':self.homebrew
         }
     
     def save(self,fp,args): # No arguments
@@ -98,6 +96,28 @@ class Session:
         self.character_urls[fp] = url
         self.character_icons[fp] = 'Dice'
         return {'code':200}
+    
+    def load_homebrew(self,fp,args): # [CritterDB Creature or Bestiary URL]
+        self.logger.debug('Loading homebrew from '+str(args[0]))
+        url = args[0]
+        if 'critterdb.com' in url:
+            try:
+                ID = urlparse(url).fragment.split('/')[3]
+                if 'bestiary' in url:
+                    self.homebrew.extend([i for i in api_get_bestiary(ID)])
+                elif 'creature' in url:
+                    self.homebrew.append(api_get_creature(ID))
+                else:
+                    self.logger.warning('Failed to load homebrew from '+str(url)+', invalid URL')
+                    return {'code':400,'reason':'URL invalid.'}
+                self.logger.debug('Homebrew loading success.')
+                return {'code':200}
+            except APIError:
+                self.logger.exception('Exception in fetching '+str(url)+':')
+                return {'code':404,'reason':'API Error'}
+        else:
+            self.logger.warning('Failed to load homebrew from '+str(url)+', invalid URL')
+            return {'code':400,'reason':'URL invalid.'}
     
     def update_sheet(self,fp,args): # []
         if fp in self.character_urls.keys():
@@ -139,7 +159,7 @@ class Session:
         return {'code':404,'reason':'Map not found.'}
     
     def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
-        self.logger.debug('Modifying map'+str(args[0]),'with args'+str(args))
+        self.logger.debug('Modifying map'+str(args[0])+'with args'+str(args))
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['grid_data'] = {
@@ -313,12 +333,21 @@ class Session:
 
         restype = args.pop(0)
         arguments = []
+        arg_keys = []
         for a in args:
             sp = a.split(',')
             arguments.append(tuple(sp))
+            arg_keys.append(sp[0])
         rs = 'get(restype,'+','.join([n[0]+'="'+n[1]+'"' for n in arguments])+')'
         results = eval(rs)
-        return {'code':200,'result':json.dumps({'data':[i.json for i in results]})}
+        data = [i.json for i in results]
+        if restype == 'monsters' and 'search' in arg_keys:
+            adict = dict(arguments)
+            for h in self.homebrew:
+                if h['name'] in adict['search'] or adict['search'] in h['name']:
+                    data.append(h)
+
+        return {'code':200,'result':json.dumps({'data':data})}
     
     def add_npc(self,fp,args): # [Map ID, Icon, Data, X, Y]
         self.logger.debug('Creating NPC on '+args[0])
@@ -668,6 +697,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
 
 logging.config.fileConfig('logging.conf')
 ROOTLOG = logging.getLogger('root')
+ROOTLOG.info('Server started.')
 ROOTLOG.info('Stored latest.log to logs/dump/historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
 
 # Sets up instance

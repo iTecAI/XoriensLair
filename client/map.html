@@ -1296,6 +1296,24 @@
                     });
                 });
 
+                $('#submit-critterdb').click(function(){ // Submit sheet
+                    if ($('#critterdb-input').val() == '') {
+                        $('#critterdb-input').toggleClass('invalid',true);
+                        return;
+                    } else {
+                        $('#critterdb-input').toggleClass('invalid',false);
+                    }
+                    $('.active').toggleClass('active',false);
+                    $('.invalid').toggleClass('invalid',false);
+                    scmd(
+                        'load_homebrew',
+                        [$('#critterdb-input').val()],
+                        function(){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                        }
+                    )
+                });
+
                 // Loading maps
                 $('#load-map').click(function(){$('#load-map-file').click()});
                 $('#load-map-file').change(function(){
@@ -1355,8 +1373,9 @@
                                 document.getElementById('search-results').innerHTML = '';
                                 for (var n=0;n<initialParse.data.length;n++) {
                                     var point = initialParse.data[n];
+                                    console.log(point);
                                     var name = point.name;
-                                    var type = point.type
+                                    var type = point.type;
                                     var hp = point.hit_points.toString();
                                     var cr = point.challenge_rating;
                                     var slug = point.slug;
@@ -1497,6 +1516,12 @@
                     $('#set-sheet-dialog').toggleClass('active',true);
                     $('#set-sheet-input').val('');
                     $('#sheet-frame').hide(0);
+                });
+                $('#load-critterdb').click(function(){
+                    $('#modal-back').toggleClass('active',true);
+                    $('#critterdb-dialog').toggleClass('active',true);
+                    $('#critterdb-input').val('');
+                    $('#critterdb-frame').hide(0);
                 });
                 $('#settings').click(function(){
                     $('#modal-back').toggleClass('active',true);
@@ -1872,6 +1897,7 @@
                 <input id='set-icon-file' style='display: none;' type="file">
             </div>
             <div class='user-buttons' id='dm-buttons'>
+                <button id='load-critterdb' data-tooltip='Load CritterDB Homebrew' data-tooltip-location="right"><img src="assets/ghost.png"></button>
                 <button id='save-session' data-tooltip='Save Session' data-tooltip-location="right"><img src="assets/save.png"></button>
                 <button id='manage-maps' data-tooltip='Manage Maps' data-tooltip-location="right"><img src="assets/map.png"></button>
                 <input id='load-map-file' style='display: none;' type="file">
@@ -1905,6 +1931,7 @@
             <p>Advance Initiative Icon: <a href="https://www.flaticon.com/authors/pixel-perfect" title="Pixel perfect">Pixel perfect</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>End Initiative Icon: <a href="https://www.flaticon.com/free-icon/no-stopping_803294" title="Those Icons">Those Icons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Refresh Icon: <a href="http://www.freepik.com/" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
+            <p>CritterDB Icon: <a href="https://github.com/haswellr/CritterDB/blob/master/server/public/img/icons/ghost.svg">ghost.svg</a></p>
         </div>
 
         <!-- Dialogs -->
@@ -1919,6 +1946,12 @@
             <input id='set-sheet-input' placeholder="URL" size="30">
             <iframe src='null' id='sheet-frame'><p>Entered URL does not link to a sheet.</p></iframe>
             <button id='submit-sheet'>Set Sheet</button>
+        </div>
+
+        <div id='critterdb-dialog' class='dialog'>
+            <p>Enter Critter or Bestiary URL (Make sure that link sharing is turned ON):</p>
+            <input id='critterdb-input' placeholder="URL" size="30">
+            <button id='submit-critterdb'>Load Critter</button>
         </div>
 
         <!-- Large Dialogs -->

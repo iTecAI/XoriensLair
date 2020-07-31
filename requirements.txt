@@ -10,3 +10,4 @@ python-meteor
 python-Levenshtein
 bson
 gspread
+dice

@@ -18,5 +18,6 @@
     "modify_npc":"dm",
     "remove_npc":"dm",
     "initiative":"pc,dm",
-    "delete_user":"dm"
+    "delete_user":"dm",
+    "load_homebrew":"dm"
 }
