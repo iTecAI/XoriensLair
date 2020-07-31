@@ -25,10 +25,16 @@
                     sendData,
                     callback,
                     'json'
-                );
+                ).fail(function(xhr,status,error){
+                    $('#no-conn').toggleClass('active',true);
+                }).done(function(){
+                    $('#no-conn').toggleClass('active',false);
+                });
             }
         </script>
         <script>
+            var API_PORT = 1023;
+
             if (getCookie('uid') == '') {
                 setCookie('uid',sha256(Math.random().toString()),14);
             }
@@ -225,7 +231,7 @@
                     'fingerprint':BrowserFingerprint,
                     'command':cmd,
                     'args':args.join('|')
-                },1023,callback);
+                },API_PORT,callback);
             }
 
             var iconIndex = {
@@ -383,7 +389,7 @@
                                         'delete_user',
                                         [$(event.delegateTarget).attr('name')],
                                         function (data) {
-                                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                         }
                                     );
                                 }));
@@ -396,7 +402,7 @@
                                             'assign_pc',
                                             [$(event.delegateTarget).attr('name')],
                                             function (data) {
-                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                             }
                                         );
                                     }));
@@ -667,7 +673,7 @@
                                         args,
                                         function(data){
                                             if (data.code == 200) {
-                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                             }
                                         }
                                     );
@@ -762,7 +768,7 @@
                                         args,
                                         function(data){
                                             if (data.code == 200) {
-                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                             }
                                         }
                                     );
@@ -877,9 +883,9 @@
                 
                 setTimeout(function () { // Ready fingerprint generation
                     console.log('FINGERPRINT: '+BrowserFingerprint);
-                    command('checkuser',{'fingerprint':BrowserFingerprint},1023,function(data){
+                    command('checkuser',{'fingerprint':BrowserFingerprint},API_PORT,function(data){
                         if (!data['found']) {
-                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,function(data){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,function(data){
                                 if (data['code'] == 200) {
                                     if (data['hasPassword']) {
                                         command('joinsession',{
@@ -887,7 +893,7 @@
                                             'id':params.get('id'),
                                             'password':prompt('Enter password to join '+data['name']+'.'),
                                             'fingerprint':BrowserFingerprint
-                                        },1023,function(data){
+                                        },API_PORT,function(data){
                                             if (Object.keys(data).includes('code')) {
                                                 if (data['code'] == 403) {
                                                     bootbox.alert('Password is incorrect.');
@@ -905,7 +911,7 @@
                                             'id':params.get('id'),
                                             'password':'',
                                             'fingerprint':BrowserFingerprint
-                                        },1023,function(data){
+                                        },API_PORT,function(data){
                                             if (Object.keys(data).includes('code')) {
                                                 if (data['code'] == 403) {
                                                     bootbox.alert('Password is incorrect.');
@@ -1187,7 +1193,7 @@
                         'fingerprint':BrowserFingerprint,
                         'command':'save',
                         'args':0
-                    },1023,function(data){
+                    },API_PORT,function(data){
                         var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data['save']));
                         saveAs(dataStr,'session.json');
                     });
@@ -1219,7 +1225,7 @@
                         'sid':params.get('id'),
                         'fingerprint':BrowserFingerprint,
                         'name':$('#change-nick-input').val()
-                    },1023,function(data){
+                    },API_PORT,function(data){
                         if (data['code'] == 404) {
                             bootbox.alert('Error: '+data['reason']);
                         }
@@ -1240,7 +1246,7 @@
                         'fingerprint':BrowserFingerprint,
                         'newname':$('#session-name-set').val(),
                         'newpass':$('#session-psw-set').val()
-                    },1023,function(data){
+                    },API_PORT,function(data){
                         if (data.code != 200) {
                             bootbox.alert(data.reason);
                         }
@@ -1251,7 +1257,7 @@
                         command('purge',{
                             'sid':params.get('id'),
                             'fingerprint':BrowserFingerprint
-                        },1023,function(data){
+                        },API_PORT,function(data){
                             if (data.code != 200) {
                                 bootbox.alert(data.reason);
                             }
@@ -1281,7 +1287,7 @@
                         'fingerprint':BrowserFingerprint,
                         'command':'load_sheet',
                         'args':$('#set-sheet-input').val()
-                    },1023,function(data){
+                    },API_PORT,function(data){
                         if (data['code'] == 200) {
                             bootbox.alert('Sheet loaded.');
                         } else {
@@ -1313,6 +1319,26 @@
                         }
 
                         scmd('load_map',[reader.result,rows,cols,gs],refresh);
+                    }, false);
+                
+                    if (file) {
+                        reader.readAsDataURL(file);
+                    }
+                });
+
+                // Set PC icon
+                $('#set-icon').click(function(){$('#set-icon-file').click()});
+                $('#set-icon-file').change(function(){
+                    var file = document.getElementById('set-icon-file').files[0];
+                    var reader = new FileReader();
+                    reader.addEventListener("load", function () {
+                        scmd(
+                            'modify_pc',
+                            [BrowserFingerprint,reader.result,[]],
+                            function(){
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                            }
+                        );
                     }, false);
                 
                     if (file) {
@@ -1447,7 +1473,7 @@
 
                 // Refresh Loop
                 window.setInterval(function(){
-                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                 },400);
 
                 // Button Cosmetics
@@ -1462,7 +1488,7 @@
                         ['0'],
                         function(data){
                             console.log(data);
-                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                         }
                     );
                 });
@@ -1526,7 +1552,7 @@
                     var pos = convertMouseToMapPos(currentCtx,event.pageX,event.pageY);
                     var args = [
                         currentCtx,
-                        'Dice',
+                        previousData.session.character_icons[BrowserFingerprint],
                         roundTo(pos[0],50)/50,
                         roundTo(pos[1],50)/50
                     ];
@@ -1637,7 +1663,7 @@
                             'modify_pc',
                             [currentCtx,-1,[['hp',new_hp]]],
                             function(){
-                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                             }
                         );
                     } else {
@@ -1656,7 +1682,7 @@
                                 'modify_pc',
                                 [currentCtx,-1,[['hp',new_hp],['max_hp',new_hp]]],
                                 function(){
-                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                 }
                             );
                         } else {
@@ -1664,7 +1690,7 @@
                                 'modify_pc',
                                 [currentCtx,-1,[['max_hp',new_hp]]],
                                 function(){
-                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                 }
                             );
                         }
@@ -1688,7 +1714,7 @@
                         'modify_pc',
                         [currentCtx,-1,[['hp',new_hp]]],
                         function(){
-                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                         }
                     );
                 });
@@ -1742,7 +1768,7 @@
                             'modify_pc',
                             [editing,-1,[[key,val]]],
                             function(){
-                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,function(data){
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,function(data){
                                     refresh(data);
                                     var editing = $('#pc-editor').attr('editing');
                                     $('#hp-input').val(data.session.characters[editing].hp);
@@ -1785,7 +1811,7 @@
                         'assign_pc',
                         [currentCtx],
                         function(){
-                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},1023,refresh);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                         }
                     );
                 });
@@ -1801,6 +1827,12 @@
     </head>
     <body>
         <div id="modal-back"></div>
+        <div id="no-conn">
+            <div id='no-conn-content'>
+                <h3>Server Offline or Unresponsive</h3>
+                <p>Could not connect to the server. The server may be restarting, in which case it will restart in a minute or so. If this does not happen, contact iTecX#8050.</p>
+            </div>
+        </div>
         <iframe id="downloader" style="display:none;"></iframe>
         <div id='custom-ctx'>
             <button class='ctx-button' id='ctx_map-close' ctx='map-close'>Close Map</button>
@@ -1837,6 +1869,7 @@
                 <button id='set-sheet' data-tooltip='Import Sheet' data-tooltip-location="right"><img src="assets/sheet.png"></button>
                 <button id='update-sheet' data-tooltip='Update Sheet' data-tooltip-location="right"><img src="assets/update_sheet.png"></button>
                 <button id='set-icon' data-tooltip='Set Player Icon' data-tooltip-location="right"><img src="assets/avatar.png"></button>
+                <input id='set-icon-file' style='display: none;' type="file">
             </div>
             <div class='user-buttons' id='dm-buttons'>
                 <button id='save-session' data-tooltip='Save Session' data-tooltip-location="right"><img src="assets/save.png"></button>

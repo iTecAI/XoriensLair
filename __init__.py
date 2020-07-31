@@ -1,19 +1,25 @@
+import os, time, shutil
+if not os.path.exists(os.path.join('logs','dump')):
+    os.makedirs(os.path.join('logs','dump'))
+
+if os.path.exists(os.path.join('logs','latest.log')):
+    fname = os.path.join('logs','dump','historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
+    with open(fname,'w') as f:
+        pass
+    shutil.copy(os.path.join('logs','latest.log'),fname)
+    with open(os.path.join('logs','latest.log'),'w') as f:
+        f.write('')
+
 from api import *
-import os
 import base64
 import json
-import datetime, time, shutil
+import datetime
 from threading import Thread
 from hashlib import sha256
 from random import random,randint
 import pickle
-
-if not os.path.exists(os.path.join('logs','dump')):
-    os.makedirs(os.path.join('logs','dump'))
-
 import logging
 import logging.config
-logging.config.fileConfig('logging.conf')
 
 # options
 IP = 'localhost'
@@ -36,6 +42,7 @@ class Session:
             self.maps = session['maps']
             self.characters = session['characters']
             self.character_urls = session['character_urls']
+            self.character_icons = session['character_icons']
             for k in self.characters.keys():
                 if type(self.characters[k]) == str:
                     self.characters[k] = Character(_json=self.characters[k])
@@ -46,6 +53,7 @@ class Session:
             self.maps = []
             self.characters = {}
             self.character_urls = {}
+            self.character_icons = {}
         
         self.initiative_data = {
             'active':False,
@@ -69,6 +77,7 @@ class Session:
             'maps':self.maps,
             'characters':ndct,
             'character_urls':self.character_urls,
+            'character_icons':self.character_icons,
             'initiative':self.initiative_data
         }
     
@@ -87,6 +96,7 @@ class Session:
             char = Character(ddbid=url)
         self.characters[fp] = char
         self.character_urls[fp] = url
+        self.character_icons[fp] = 'Dice'
         return {'code':200}
     
     def update_sheet(self,fp,args): # []
@@ -129,7 +139,7 @@ class Session:
         return {'code':404,'reason':'Map not found.'}
     
     def modify_map(self,fp,args): # [Map ID, # Rows, # Columns, Feet/square, X, Y, Active]
-        self.logger.debug('Modifying map',args[0],'with args',args)
+        self.logger.debug('Modifying map'+str(args[0]),'with args'+str(args))
         for i in range(len(self.maps)):
             if self.maps[i]['id'] == args[0]:
                 self.maps[i]['grid_data'] = {
@@ -201,6 +211,7 @@ class Session:
             self.logger.warning('User error - Character not found. User '+fp)
             return {'code':404,'reason':'Character not found.'}
         if str(args[1]) != '-1':
+            self.character_icons[args[0]] = args[1]
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
                     self.maps[m]['characters'][args[0]]['icon'] = args[1]
@@ -265,8 +276,10 @@ class Session:
         if args[0] in self.characters.keys():
             self.characters[fp] = self.characters[args[0]]
             self.character_urls[fp] = self.character_urls[args[0]]
+            self.character_icons[fp] = self.character_icons[args[0]]
             del self.characters[args[0]]
             del self.character_urls[args[0]]
+            del self.character_icons[args[0]]
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
                     self.maps[m]['characters'][fp] = self.maps[m]['characters'][args[0]]
@@ -458,6 +471,7 @@ class Session:
         if args[0] in self.characters.keys():
             del self.characters[args[0]]
             del self.character_urls[args[0]]
+            del self.character_icons[args[0]]
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['characters'].keys():
                     del self.maps[m]['characters'][args[0]]
@@ -652,7 +666,9 @@ class RunningInstance: # Currently running instance, maintains stateful presence
 
 # main code
 
+logging.config.fileConfig('logging.conf')
 ROOTLOG = logging.getLogger('root')
+ROOTLOG.info('Stored latest.log to logs/dump/historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
 
 # Sets up instance
 if os.path.exists('state.stor'):
@@ -671,7 +687,6 @@ if os.path.exists('state.stor'):
 else:
     ROOTLOG.info('No state.stor file found. Running clean instance.')
     instance = RunningInstance()
-
 
 def check_all():
     global instance, ROOTLOG

@@ -658,3 +658,35 @@ tr {
 #saves-row {
     border-bottom: 2px solid gray;
 }
+
+#no-conn {
+    position: absolute;
+    height: 100vh;
+    width: 100vw;
+    left: 0px;
+    top: 0px;
+    background-color: rgba(146, 146, 146,0);
+    display: block;
+    transition: background-color 0.2s, color 0.2s;
+    z-index: -100000;
+    color: rgba(215, 215, 216,0);
+}
+
+#no-conn.active {
+    background-color: rgba(58, 47, 68, 0.863);
+    color: rgb(215, 215, 216);
+    z-index: 100000;
+}
+
+#no-conn-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    font-family: roboto;
+}
+
+#no-conn-content h3 {
+    font-size: 5vh;
+}
