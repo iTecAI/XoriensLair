@@ -158,3 +158,11 @@ input.invalid {
     border-width: 6px;
 }
 
+.italics {
+    font-style: italic;
+}
+
+.bold {
+    font-weight: bold;
+}
+

@@ -15,6 +15,7 @@ import pickle
 import logging
 import logging.config
 from urllib.parse import urlparse
+from dice import roll
 
 # options
 IP = 'localhost'
@@ -398,7 +399,6 @@ class Session:
 
         if args[0] == 'roll':
             if dat['type'] == 'pc':
-                print(self.characters)
                 roll = randint(1,20)+int(self.characters[fp]['skills']['initiative']['value'])+(random()/10)
                 data = self.characters[fp].to_json()
                 ID = fp
@@ -511,7 +511,9 @@ class Session:
         
         self.logger.warning('User error - Character not found. User '+fp)
         return {'code':404,'reason':'Character not found'}
-            
+    
+    def pc_attack(self,fp,args): # [Target, Attack data]
+        pass
         
 
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets

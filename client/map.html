@@ -44,6 +44,8 @@
             var previousData = {'null':null}; // Setup for data access
             var uType = 'pc'; // User type
             var cursor = 'default'; // Cursor type
+            var currentInitTarget = null;
+            var sidebarActivating = false;
             var obscureInfo = {
                 obscuring:false,
                 id:null,
@@ -73,14 +75,10 @@
                 - !in_init: The user's PC or the selected NPC is NOT in the initiative count
             */
             var ctxMenu = { // Selectors to activate custom context menu on
-                '#display-area':{
-                    'end-initiative':'dm'
-                },
                 '.map-container':{
                     'map-close':'dm',
                     'add-pc':'pc',
-                    'add-npc':'dm',
-                    'end-initiative':'dm'
+                    'add-npc':'dm'
                 },
                 '.pc-icon':{
                     'remove-pc':'pc|self',
@@ -91,12 +89,14 @@
                     'set-pc-max-hp':'pc,dm|self',
                     'change-pc-hp':'pc,dm|self',
                     'edit-pc':'pc,dm|self',
-                    'claim-pc':'pc|!self'
+                    'claim-pc':'pc|!self',
+                    'attack':'pc|!self,init'
                 },
                 '.npc-icon':{
                     'remove-npc':'dm',
                     'run-initiative':'dm|!in_init',
-                    'remove-initiative':'dm|in_init'
+                    'remove-initiative':'dm|in_init',
+                    'attack':'pc|init'
                 }
             }; 
 
@@ -1183,6 +1183,9 @@
                         $('#custom-ctx *').toggleClass('active',false);
                         currentCtx = null;
                     }
+                    if ($(event.target).parents('#initiative-sidebar').length == 0 && $(event.target).attr('id')!='initiative-sidebar' && !sidebarActivating) {
+                        $('#initiative-sidebar').toggleClass('active',false);
+                    }
                     
                 });
 
@@ -1840,6 +1843,47 @@
                         }
                     );
                 });
+                $('#ctx_attack').click(function(event){
+                    currentInitTarget = currentCtx;
+
+                    var userAttacks = previousData.session.characters[BrowserFingerprint].attacks;
+                    $('#actions-panel').html('');
+                    for (var a=0;a<userAttacks.length;a++) {
+                        var atk = userAttacks[a];
+                        var atkDesc = atk.automation[1][atk.automation[1].type].replace('***\n','</span><br>').replace('*** ','</span>').replace('***','<span class="italics">');
+                        var _dmgStr = atk.automation[0].effects[0].hit[0].damage;
+                        var atkRoll = _dmgStr.split('[')[0];
+                        var dmgType = _dmgStr.split('[')[1].replace(']','');
+
+                        var atkData = {
+                            bonus:atk.automation[0].effects[0].attackBonus,
+                            roll:atkRoll,
+                            type:dmgType
+                        };
+
+                        var mainAtkEl = $(
+                            '<div id="atk_'+atk.name+'" name="'+atk.name+'" data="'+JSON.stringify(atkData)+'" class="atk-box">'+
+                            '<div class="atk-title">'+atk.name+'</div>'+
+                            '<div class="atk-content"><span class="bold">Description:</span><br> '+atkDesc+'</div>'+
+                            '<div class="atk-stats">'+
+                            '<span class="bold">Bonus:</span> '+atk.automation[0].effects[0].attackBonus+'<br>'+
+                            '<span class="bold">Damage:</span> '+atkRoll+'<br>'+
+                            '<span class="bold">Type:</span> '+dmgType+
+                            '</div>'+
+                            '</div>'
+                        ).click(function(event){
+                            var atkData = JSON.parse($(event.delegateTarget).attr('data'));
+                        });
+                        $('#actions-panel').append(mainAtkEl);
+                    }
+
+                    sidebarActivating = true;
+                    setTimeout(function(){
+                        sidebarActivating = false;
+                    },0.5);
+                    $('#initiative-sidebar').toggleClass('active',true);
+                    console.log('clicked');
+                });
             });
 
 
@@ -1855,7 +1899,10 @@
         <div id="no-conn">
             <div id='no-conn-content'>
                 <h3>Server Offline or Unresponsive</h3>
-                <p>Could not connect to the server. The server may be restarting, in which case it will restart in a minute or so. If this does not happen, contact iTecX#8050.</p>
+                <p>
+                    Could not connect to the server. The server may be restarting, in which case it will restart in a minute or so. 
+                    If this does not happen, contact iTecX#8050 on Discord.
+                </p>
             </div>
         </div>
         <iframe id="downloader" style="display:none;"></iframe>
@@ -1868,12 +1915,12 @@
             <button class='ctx-button' id='ctx_remove-npc' ctx='remove-npc'>Remove NPC</button>
             <button class='ctx-button' id='ctx_run-initiative' ctx='run-initiative'>Roll Initiative</button>
             <button class='ctx-button' id='ctx_remove-initiative' ctx='remove-initiative'>Remove From Initiative</button>
-            <button class='ctx-button' id='ctx_end-initiative' ctx='end-initiative'>End Initiative</button>
             <button class='ctx-button' id='ctx_set-pc-hp' ctx='set-pc-hp'>Set HP</button>
             <button class='ctx-button' id='ctx_set-pc-max-hp' ctx='set-pc-max-hp'>Set Maximum HP</button>
             <button class='ctx-button' id='ctx_change-pc-hp' ctx='change-pc-hp'>Change HP</button>
             <button class='ctx-button' id='ctx_edit-pc' ctx='edit-pc'>Edit Statistics</button>
             <button class='ctx-button' id='ctx_claim-pc' ctx='claim-pc'>Claim Character</button>
+            <button class='ctx-button' id='ctx_attack' ctx='attack'>Attack</button>
         </div>
 
         <div id='cursors-bar'>
@@ -1942,7 +1989,7 @@
         </div>
 
         <div id='set-sheet-dialog' class='dialog'>
-            <p>Enter sheet URL (GSheet2 or D&D Beyond):</p>
+            <p>Enter sheet URL (GSheet2 share link):</p>
             <input id='set-sheet-input' placeholder="URL" size="30">
             <iframe src='null' id='sheet-frame'><p>Entered URL does not link to a sheet.</p></iframe>
             <button id='submit-sheet'>Set Sheet</button>
@@ -2116,6 +2163,13 @@
             <div id='current-init'><img id='ci-img' src="" data-tooltip=''></div>
             <div id='next-arrow'><img src="assets/next.png"></div>
             <div id='next-init'><img id='ni-img' src="" data-tooltip=''></div>
+        </div>
+
+        <div id='initiative-sidebar'>
+            <h3>Attacks</h3>
+            <div id='actions-panel'>
+
+            </div>
         </div>
     </body>
 </html>

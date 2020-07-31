@@ -19,5 +19,6 @@
     "remove_npc":"dm",
     "initiative":"pc,dm",
     "delete_user":"dm",
-    "load_homebrew":"dm"
+    "load_homebrew":"dm",
+    "pc_attack":"pc"
 }
