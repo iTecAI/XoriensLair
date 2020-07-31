@@ -6,6 +6,7 @@ import datetime, time, shutil
 from threading import Thread
 from hashlib import sha256
 from random import random,randint
+import pickle
 
 if not os.path.exists(os.path.join('logs','dump')):
     os.makedirs(os.path.join('logs','dump'))
@@ -478,6 +479,12 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         self.u_expire = {}
         self.logger = logging.getLogger('instance_'+LOGMODE)
         self.logger.debug('Instance loaded.')
+    
+    def _check(self):
+        for i in ['sessions','u_expire','logger','new_session','new_user','check_user','get_user_index','edit_name','session_cmd','get_session_info','modify_session','purge_session']:
+            if not hasattr(self,i):
+                return False
+        return True
 
     def new_session(self,data): # name, password, id, fingerprint, OPTIONAL session data
         # Creates a new session and adds the user that creates it as a DM
@@ -645,9 +652,26 @@ class RunningInstance: # Currently running instance, maintains stateful presence
 
 # main code
 
-# Sets up instance
-instance = RunningInstance()
 ROOTLOG = logging.getLogger('root')
+
+# Sets up instance
+if os.path.exists('state.stor'):
+    ROOTLOG.info('Found state.stor file. Loading saved instance.')
+    with open('state.stor','rb') as state:
+        instance = pickle.load(state)
+        if hasattr(instance,'_check'):
+            if instance._check:
+                ROOTLOG.info('Loaded and checked saved instance.')
+            else:
+                ROOTLOG.info('Instance check failed, running clean instance.')
+                instance = RunningInstance()
+        else:
+            ROOTLOG.info('Instance check failed, running clean instance.')
+            instance = RunningInstance()
+else:
+    ROOTLOG.info('No state.stor file found. Running clean instance.')
+    instance = RunningInstance()
+
 
 def check_all():
     global instance, ROOTLOG
@@ -663,8 +687,11 @@ def check_all():
             else:
                 ROOTLOG.info('Killed session'+str(i))
 
+        with open('state.stor','wb') as store:
+            pickle.dump(instance,store)
+
         instance.sessions = nse
-        time.sleep(15)
+        time.sleep(1)
 
 def log_thread():
     global ROOTLOG, MAX_LOG_SIZE

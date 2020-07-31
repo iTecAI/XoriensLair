@@ -132,3 +132,6 @@ avrae-google.json
 
 # vsc
 settings.json
+
+# Stateful management
+*.stor
