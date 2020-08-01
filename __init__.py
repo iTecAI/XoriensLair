@@ -792,7 +792,7 @@ class Session:
             roll = d20.roll(args[0])
             elements = str(roll)
             print(elements)
-            self.logger.debug('User '+fp+' rolled '+args[0]+' and got '+str(roll.total)+'. Roll elements: '+elements)
+            self.logger.debug('User '+fp+' rolled '+args[0]+' and got '+str(roll.total))
             return {'code':200,'roll':roll.total,'elements':elements}
         except d20.errors.RollSyntaxError as e:
             self.logger.exception('Dice error: ')
