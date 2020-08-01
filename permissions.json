@@ -20,5 +20,7 @@
     "initiative":"pc,dm",
     "delete_user":"dm",
     "load_homebrew":"dm",
+    "delete_homebrew":"dm",
+    "reload_homebrew":"dm",
     "pc_attack":"pc"
 }

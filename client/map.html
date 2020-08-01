@@ -27,7 +27,12 @@
                     'json'
                 ).fail(function(xhr,status,error){
                     $('#no-conn').toggleClass('active',true);
-                }).done(function(){
+                }).done(function(xhr,status,error){
+                    if (Object.keys(xhr).includes('code')) {
+                        if (xhr.code != 200) {
+                            console.log('Error '+xhr.code+': '+xhr.reason);
+                        }
+                    }
                     $('#no-conn').toggleClass('active',false);
                 });
             }
@@ -225,7 +230,6 @@
                         args[a] = toPythonListStr(args[a]);
                     }
                 }
-                console.log(args);
                 command('scmd',{
                     'sid':params.get('id'),
                     'fingerprint':BrowserFingerprint,
@@ -267,10 +271,8 @@
 
             function getIcon(path) {
                 if (Object.keys(iconIndex).includes(path)) {
-                    console.log('assets/icons/'+iconIndex[path]);
                     return 'assets/icons/'+iconIndex[path];
                 } else {
-                    console.log(path)
                     return path;
                 }
             }
@@ -538,7 +540,6 @@
                                     }
                                     obscureInfo.obscuring = false;
                                     var zoomMod = Number(target.getAttribute('zoom'));
-                                    console.log(obscureInfo.sx/(Number(data.grid_data.columns)*10)*20,obscureInfo.sy/(Number(data.grid_data.rows)*10)*20);
                                     var args = [
                                         target.id,
                                         Math.round((obscureInfo.sx/(Number(data.grid_data.columns)*10))*20)/5,
@@ -547,7 +548,6 @@
                                         (obscureInfo.h/(Number(data.grid_data.rows)*50))*100,
                                         sha256(Math.random().toString())
                                     ];
-                                    console.log(args);
                                     if (args[3] < 1 && args[4] < 1) {
                                         return;
                                     }
@@ -825,8 +825,6 @@
                                 var topContainerRect = topContainer.getBoundingClientRect();
                                 topContainerRect.x = localMapData[topContainer.id].pos[0];
                                 topContainerRect.y = localMapData[topContainer.id].pos[1];
-                                console.log(topContainerRect);
-                                console.log(event.pageX-dispRect.x,event.pageY-dispRect.y);
 
                                 var originDelta = [
                                     (event.pageX - dispRect.x - topContainerRect.x),
@@ -1232,7 +1230,10 @@
                     scmd(
                         'load_homebrew',
                         [$('#critterdb-input').val()],
-                        function(){
+                        function(data){
+                            if (data.code == 200) {
+                                bootbox.alert('Success! Loaded '+data.num_creatures+' creature(s) from '+$('#critterdb-input').val());
+                            }
                             command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                         }
                     )
@@ -1297,41 +1298,86 @@
                                 document.getElementById('search-results').innerHTML = '';
                                 for (var n=0;n<initialParse.data.length;n++) {
                                     var point = initialParse.data[n];
-                                    console.log(point);
                                     var name = point.name;
                                     var type = point.type;
                                     var hp = point.hit_points.toString();
                                     var cr = point.challenge_rating;
-                                    var slug = point.slug;
-                                    $('<div class="npc-info-block"><span>'+[
-                                            'Name: <a href="https://open5e.com/monsters/'+slug+'" target="_blank">'+name+'</a>',
-                                            'Type: '+type,
-                                            'HP: '+hp,
-                                            'CR: '+cr
-                                        ].join('</span><span>')+'</span></div>')
-                                        .attr('data',JSON.stringify(point))
-                                        .click(function(event){
-                                            var data = JSON.parse($(event.delegateTarget).attr('data'));
-                                            $('#npc-name-inp').val(data.name);
-                                            $('#npc-hp-inp').val(data.hit_points);
-                                            $('.npc-icon').removeClass('selected');
-                                            if (data.img_main) {
-                                                $('#npc-icon-open5e').toggleClass('selected',true);
-                                                $('#npc-icon-open5e img').attr('src',data.img_main);
-                                                $('#npc-icon-open5e').css('display','inline-block');
-                                            } else if (data.type == 'dragon') {
-                                                $('#npc-icon-Dragon').toggleClass('selected',true);
-                                                $('#npc-icon-open5e').css('display','none');
-                                            } else if (data.name.toLowerCase().includes('mimic')) {
-                                                $('#npc-icon-Treasure').toggleClass('selected',true);
-                                                $('#npc-icon-open5e').css('display','none');
-                                            } else {
-                                                $('#npc-icon-Dice').toggleClass('selected',true);
-                                                $('#npc-icon-open5e').css('display','none');
-                                            }
-                                            npcData.data = data;
-                                        })
-                                        .appendTo($('#search-results'));
+                                    if (Object.keys(point).includes('homebrew')) {
+                                        var _id = point.dbId;
+                                        $('<div class="npc-info-block homebrew-npc"><span>'+[
+                                                'Name: <a href="https://critterdb.com/#/creature/view/'+_id+'" target="_blank">'+name+'</a>',
+                                                'Type: '+type,
+                                                'HP: '+hp,
+                                                'CR: '+cr
+                                            ].join('</span><span>')+'</span></div>')
+                                            .append(
+                                                $('<button class="rm-homebrew-npc" id="npc_'+_id+'" name="'+_id+'" data-tooltip="Delete Creature" data-tooltip-location="left"><img width="100%" height="100%" src="assets/delete.png"></button>')
+                                                .click(function(event){
+                                                    var delId = $(event.delegateTarget).attr('name');
+                                                    scmd(
+                                                        'delete_homebrew',
+                                                        [delId],
+                                                        function(data){
+                                                            $('#npc-search').keyup();
+                                                        }
+                                                    );
+                                                })
+                                            )
+                                            .attr('data',JSON.stringify(point))
+                                            .click(function(event){
+                                                var data = JSON.parse($(event.delegateTarget).attr('data'));
+                                                $('#npc-name-inp').val(data.name);
+                                                $('#npc-hp-inp').val(data.hit_points);
+                                                $('.npc-icon').removeClass('selected');
+                                                if (data.img_main) {
+                                                    $('#npc-icon-open5e').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e img').attr('src',data.img_main);
+                                                    $('#npc-icon-open5e').css('display','inline-block');
+                                                } else if (data.type == 'dragon') {
+                                                    $('#npc-icon-Dragon').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                } else if (data.name.toLowerCase().includes('mimic')) {
+                                                    $('#npc-icon-Treasure').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                } else {
+                                                    $('#npc-icon-Dice').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                }
+                                                npcData.data = data;
+                                            })
+                                            .appendTo($('#search-results'));
+                                    } else {
+                                        var slug = point.slug;
+                                        $('<div class="npc-info-block"><span>'+[
+                                                'Name: <a href="https://open5e.com/monsters/'+slug+'" target="_blank">'+name+'</a>',
+                                                'Type: '+type,
+                                                'HP: '+hp,
+                                                'CR: '+cr
+                                            ].join('</span><span>')+'</span></div>')
+                                            .attr('data',JSON.stringify(point))
+                                            .click(function(event){
+                                                var data = JSON.parse($(event.delegateTarget).attr('data'));
+                                                $('#npc-name-inp').val(data.name);
+                                                $('#npc-hp-inp').val(data.hit_points);
+                                                $('.npc-icon').removeClass('selected');
+                                                if (data.img_main) {
+                                                    $('#npc-icon-open5e').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e img').attr('src',data.img_main);
+                                                    $('#npc-icon-open5e').css('display','inline-block');
+                                                } else if (data.type == 'dragon') {
+                                                    $('#npc-icon-Dragon').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                } else if (data.name.toLowerCase().includes('mimic')) {
+                                                    $('#npc-icon-Treasure').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                } else {
+                                                    $('#npc-icon-Dice').toggleClass('selected',true);
+                                                    $('#npc-icon-open5e').css('display','none');
+                                                }
+                                                npcData.data = data;
+                                            })
+                                            .appendTo($('#search-results'));
+                                    }
                                 }
                             }
                         });
@@ -1446,6 +1492,16 @@
                     $('#critterdb-dialog').toggleClass('active',true);
                     $('#critterdb-input').val('');
                     $('#critterdb-frame').hide(0);
+                });
+                $('#reload-critterdb').click(function(){
+                    scmd(
+                        'reload_homebrew',
+                        [0],
+                        function(data){
+                            bootbox.alert(data.msg);
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                        }
+                    );
                 });
                 $('#settings').click(function(){
                     $('#modal-back').toggleClass('active',true);
@@ -1792,10 +1848,8 @@
                             _toHit += '+'+bonus;
                         }
 
-                        console.log(_toHit);
-
                         var atkData = {
-                            "toHit":_toHit,
+                            "bonus":bonus,
                             "roll":atkRoll,
                             "type":dmgType,
                             "magic":false
@@ -1806,17 +1860,34 @@
                             '<div class="atk-title">'+atk.name+'</div>'+
                             '<div class="atk-content"><span class="bold">Description:</span><br> '+atkDesc+'</div>'+
                             '<div class="atk-stats">'+
-                            '<span class="bold">Bonus:</span> '+atk.automation[0].effects[0].attackBonus+'<br>'+
+                            '<span class="bold">Bonus:</span> '+bonus+'<br>'+
                             '<span class="bold">Damage:</span> '+atkRoll+'<br>'+
                             '<span class="bold">Type:</span> '+dmgType+
                             '</div>'+
                             '</div>'
                         ).click(function(event){
-                            var atkData = $(event.delegateTarget).attr('data');
+                            var atkData = JSON.parse($(event.delegateTarget).attr('data'));
+                            var _toHit = 'd20';
+                            var bonus = atkData.bonus;
+                            var adv = $('#switch-adv input').prop('checked');
+                            var dis = $('#switch-dis input').prop('checked');
+                            atkData.magic = $('#switch-magic input').prop('checked');
+                            if (adv) {
+                                _toHit = '2'+_toHit+'h1';
+                            } else if (dis) {
+                                _toHit = '2'+_toHit+'l1';
+                            }
+
+                            if (bonus < 0) {
+                                _toHit += '-'+bonus;
+                            } else {
+                                _toHit += '+'+bonus;
+                            }
+                            atkData['toHit'] = _toHit;
                             console.log(atkData);
                             scmd(
                                 'pc_attack',
-                                [currentInitTarget,$(currentInitTarget).attr('mapid'),atkData],
+                                [currentInitTarget,$(currentInitTarget).attr('mapid'),JSON.stringify(atkData)],
                                 function(data) {
                                     console.log(data);
                                     command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
@@ -1835,6 +1906,8 @@
                     $('#initiative-sidebar').toggleClass('active',true);
                     console.log('clicked');
                 });
+                $('#switch-adv input').click(function(){$('#switch-dis input').prop('checked',false)});
+                $('#switch-dis input').click(function(){$('#switch-adv input').prop('checked',false)});
             });
 
 
@@ -1896,6 +1969,7 @@
             </div>
             <div class='user-buttons' id='dm-buttons'>
                 <button id='load-critterdb' data-tooltip='Load CritterDB Homebrew' data-tooltip-location="right"><img src="assets/ghost.png"></button>
+                <button id='reload-critterdb' data-tooltip='Update CritterDB Homebrews' data-tooltip-location="right"><img src="assets/ghost_reload.png"></button>
                 <button id='save-session' data-tooltip='Save Session' data-tooltip-location="right"><img src="assets/save.png"></button>
                 <button id='manage-maps' data-tooltip='Manage Maps' data-tooltip-location="right"><img src="assets/map.png"></button>
                 <input id='load-map-file' style='display: none;' type="file">
@@ -2118,6 +2192,22 @@
 
         <div id='initiative-sidebar'>
             <h3>Attacks</h3>
+            <div id='atk-switches' class='noselect'>
+                <label class="switch" id='switch-adv'>
+                    <input type="checkbox">
+                    <span class="slider round"></span>
+                </label><span class="bold">Advantage</span><br>
+                
+                <label class="switch" id='switch-dis'>
+                    <input type="checkbox">
+                    <span class="slider round"></span>
+                </label><span class="bold">Disadvantage</span><br>
+                
+                <label class="switch" id='switch-magic'>
+                    <input type="checkbox">
+                    <span class="slider round"></span>
+                </label><span class="bold">Magic</span>
+            </div>
             <div id='actions-panel'>
 
             </div>

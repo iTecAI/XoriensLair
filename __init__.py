@@ -40,6 +40,7 @@ class Session:
             self.character_urls = session['character_urls']
             self.character_icons = session['character_icons']
             self.homebrew = session['homebrew']
+            self.homebrew_urls = session['homebrew_urls']
             for k in self.characters.keys():
                 if type(self.characters[k]) == str:
                     self.characters[k] = Character(_json=self.characters[k])
@@ -52,6 +53,7 @@ class Session:
             self.character_urls = {}
             self.character_icons = {}
             self.homebrew = []
+            self.homebrew_urls = {}
         
         self.initiative_data = {
             'active':False,
@@ -98,27 +100,88 @@ class Session:
         self.character_icons[fp] = 'Dice'
         return {'code':200}
     
-    def load_homebrew(self,fp,args): # [CritterDB Creature or Bestiary URL]
+    def _homebrew_has(self,ID):
+        for h in self.homebrew:
+            if ID == h['dbId']:
+                return True
+        return False
+    
+    def reload_homebrew(self,fp,args): # []
+        self.logger.debug('Reloading homebrew critters from '+str(len(self.homebrew_urls.keys()))+' sources.')
+        total_count = 0
+        for k in self.homebrew_urls.keys():
+            data = self.load_homebrew(fp,[k],replace=True)
+            if data['code'] == 200:
+                total_count += data['num_creatures']
+        self.logger.debug('Reloaded '+str(total_count)+' creatures from CritterDB.')
+        return {'code':200,'msg':'Reloaded '+str(total_count)+' creatures from CritterDB.'}
+    
+    def load_homebrew(self,fp,args,replace=False): # [CritterDB Creature or Bestiary URL]
         self.logger.debug('Loading homebrew from '+str(args[0]))
         url = args[0]
         if 'critterdb.com' in url:
             try:
                 ID = urlparse(url).fragment.split('/')[3]
                 if 'bestiary' in url:
-                    self.homebrew.extend([i for i in api_get_bestiary(ID)])
+                    all_creatures = api_get_bestiary(ID)
+                    creatures = [i for i in all_creatures if not self._homebrew_has(i['dbId']) or replace]
+                    if replace:
+                        for c in creatures:
+                            for h in range(len(self.homebrew)):
+                                if self.homebrew[h]['dbId'] == c['dbId']:
+                                    del self.homebrew[h]
+                                    break
+                            
+                    self.homebrew.extend(creatures)
+                    nc = len(creatures)
+                    if not url in self.homebrew_urls.keys():
+                        self.homebrew_urls[url] = all_creatures
                 elif 'creature' in url:
-                    self.homebrew.append(api_get_creature(ID))
+                    crt = api_get_creature(ID)
+                    if self._homebrew_has(crt['dbId']) and not replace:
+                        nc = 0
+                    else:
+                        if replace:
+                            for h in range(len(self.homebrew)):
+                                if self.homebrew[h]['dbId'] == crt['dbId']:
+                                    del self.homebrew[h]
+                                    break
+                        self.homebrew.append(crt)
+                        nc = 1
+                    if not url in self.homebrew_urls.keys():
+                        self.homebrew_urls[url] = [crt]
                 else:
                     self.logger.warning('Failed to load homebrew from '+str(url)+', invalid URL')
                     return {'code':400,'reason':'URL invalid.'}
                 self.logger.debug('Homebrew loading success.')
-                return {'code':200}
+                return {'code':200,'num_creatures':nc}
             except APIError:
                 self.logger.exception('Exception in fetching '+str(url)+':')
                 return {'code':404,'reason':'API Error'}
         else:
             self.logger.warning('Failed to load homebrew from '+str(url)+', invalid URL')
             return {'code':400,'reason':'URL invalid.'}
+    
+    def delete_homebrew(self,fp,args): # [Critter ID]
+        self.logger.debug('Deleting homebrew with ID '+args[0])
+        found = False
+        for h in range(len(self.homebrew)):
+            if self.homebrew[h]['dbId'] == args[0]:
+                del self.homebrew[h]
+                found = True
+                for url in self.homebrew_urls.keys():
+                    for crt in range(len(self.homebrew_urls[url])):
+                        if self.homebrew_urls[url][crt]['dbId'] == args[0]:
+                            del self.homebrew_urls[url][crt]
+                break
+        for url in self.homebrew_urls.keys():
+            if len(self.homebrew_urls[url]) == 0:
+                del self.homebrew_urls[url]
+                self.logger.debug('There were no homebrew creatures left from '+url+', so it was deleted.')
+        if found:
+            return {'code':200}
+        self.logger.warning('Homebrew ID "'+args[0]+'" not found.')
+        return {'code':404,'reason':'Homebrew ID "'+args[0]+'" not found.'}
     
     def update_sheet(self,fp,args): # []
         if fp in self.character_urls.keys():
@@ -345,7 +408,7 @@ class Session:
         if restype == 'monsters' and 'search' in arg_keys:
             adict = dict(arguments)
             for h in self.homebrew:
-                if h['name'] in adict['search'] or adict['search'] in h['name']:
+                if h['name'].lower() in adict['search'].lower() or adict['search'].lower() in h['name'].lower():
                     data.append(h)
 
         return {'code':200,'result':json.dumps({'data':data})}
@@ -554,7 +617,7 @@ class Session:
                                 if data['type'] == k:
                                     damage = damage * r[1]
                                     break
-                                if 'nonmagic' in k or 'non-magic' in k:
+                                if ('nonmagic' in k or 'non-magic' in k) and not data['magic']:
                                     for d in ['piercing','slashing','bludgeoning']:
                                         if data['type'] == d and d in k:
                                             damage = damage * r[1]

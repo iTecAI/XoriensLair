@@ -436,8 +436,10 @@ def api_get_creature(ID=None,_dict=None,instance=None):
     output = {}
     #manual item assignment =======================================================================
     #determine raw attributes
+    output['homebrew'] = True
     output['name'] = item.name
     output['slug'] = item.name.lower()
+    output['dbId'] = item._id
     output['size'] = item.stats.size
     output['type'] = str(item.stats.race).lower()
     output['alignment'] = str(item.stats.alignment).lower()
@@ -447,6 +449,7 @@ def api_get_creature(ID=None,_dict=None,instance=None):
     output['damage_resistances'] = ','.join([i.lower() for i in item.stats.damageResistances])
     output['damage_vulnerabilities'] = ','.join([i.lower() for i in item.stats.damageVulnerabilities])
     output['damage_immunities'] = ','.join([i.lower() for i in item.stats.damageImmunities])
+    output['img_main'] = item.flavor.imageUrl
     prof = item.stats.proficiencyBonus
 
     #determine HP & HD

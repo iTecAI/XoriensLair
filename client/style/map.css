@@ -516,6 +516,16 @@ html {
     margin: 0px;
 }
 
+#search-results div.homebrew-npc span {
+    display: inline-block;
+    position: relative;
+    width: 20%;
+    text-align: center;
+    font-family: roboto;
+    font-size: 100%;
+    margin: 0px;
+}
+
 #search-results div span a:visited {
     color: blue;
 }
@@ -570,6 +580,20 @@ html {
 #npc-icon-select::-webkit-scrollbar-thumb:hover {
     background-color: rgb(28, 26, 34); 
 }
+
+.homebrew-npc button {
+    height: 8vh;
+    width: 8vh;
+    padding: 1vh;
+}
+
+.homebrew-npc button img {
+    height: 4vh;
+    width: 4vh;
+    margin: 0px;
+}
+
+
 
 #initiative-box {
     position: absolute;
@@ -729,7 +753,7 @@ tr {
     position: absolute;
     bottom: 0px;
     right: 0px;
-    height: 73vh;
+    height: 63vh;
     overflow-wrap: normal;
     overflow-x: hidden;
     overflow-y: scroll;
@@ -784,4 +808,18 @@ tr {
 
 .atk-box:hover {
     background-color: rgb(50, 46, 61);
+}
+
+#atk-switches {
+    color: rgb(239, 243, 251);
+    vertical-align: top;
+    padding: 15px;
+    padding-top: 0px;
+    width: 100%;
+}
+
+#atk-switches .bold {
+    width: calc(100% - 30px);
+    text-align: right;
+    display: inline-block;
 }
