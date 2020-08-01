@@ -51,6 +51,7 @@
             var cursor = 'default'; // Cursor type
             var currentInitTarget = null;
             var sidebarActivating = false;
+            var currentDiceHide = undefined;
             var obscureInfo = {
                 obscuring:false,
                 id:null,
@@ -171,6 +172,10 @@
                     }
                 }
                 return null;
+            }
+
+            function getRandom(min,max) {
+                return Math.trunc(Math.random()*(max+min-1))+min;
             }
 
             function roundTo(v,interval) { // Round v to nearest interval (ie round 54 to nearest 50 = 50, round 97 to nearest 50 = 100)
@@ -1905,9 +1910,9 @@
                             }
                             var toHit = 'd20';
                             if ($('#switch-adv input').prop('checked') == true) {
-                                toHit += '^1';
+                                toHit += 'kh1';
                             } else if ($('#switch-dis input').prop('checked') == true) {
-                                toHit += 'v1';
+                                toHit += 'kl1';
                             }
                             data.toHit = toHit;
                             scmd(
@@ -2007,9 +2012,9 @@
                                 }
                                 var toHit = 'd20';
                                 if ($('#switch-adv input').prop('checked') == true) {
-                                    toHit += '^1';
+                                    toHit += 'kh1';
                                 } else if ($('#switch-dis input').prop('checked') == true) {
-                                    toHit += 'v1';
+                                    toHit += 'kl1';
                                 }
                                 data.toHit = toHit;
                                 scmd(
@@ -2067,6 +2072,59 @@
 
                 $('#switch-adv input').click(function(){$('#switch-dis input').prop('checked',false)});
                 $('#switch-dis input').click(function(){$('#switch-adv input').prop('checked',false)});
+                var diceList = {
+                    'd4':4,
+                    'd6':6,
+                    'd8':8,
+                    'd10':10,
+                    'd12':12,
+                    'd20':20,
+                    'd100':100
+                };
+                for (var d=0;d<Object.keys(diceList).length;d++) {
+                    $('#'+Object.keys(diceList)[d]+'-btn')
+                        .attr('dice',diceList[Object.keys(diceList)[d]])
+                        .click(function(event){
+                            var value = getRandom(1,Number($(event.delegateTarget).attr('dice'))).toString();
+                            $('#roll-result').text(String(value));
+                            $('#dice-display').animate({'height':'45px'},200);
+                            clearTimeout(currentDiceHide);
+                            currentDiceHide = setTimeout(function(){$('#dice-display').animate({'height':'0px'},200);currentDiceHide=undefined;},5000);
+                        });
+                }
+
+                $('#dcustom-btn').click(function(event){
+                    $('#dice-input').show(0);
+                    $('#dice-input').animate({'height':'45px','bottom':'35px'},200);
+                    $('#dice-input input').animate({'height':'32px'},200);
+                });
+                $('#dice-input').hide(0);
+                $('#dice-input input').change(function(event){
+                    $('#dice-input').hide(0);
+                    $('#dice-input').animate({'height':'0px','bottom':'0px'},0);
+                    $('#dice-input input').animate({'height':'0px'},0);
+                    if ($('#dice-str-inp').val() != '') {
+                        scmd(
+                            'roll',
+                            [$('#dice-str-inp').val()],
+                            function(data) {
+                                if (data.code == 200) {
+                                    bootbox.alert(
+                                        '<span class="bold">Result: </span><br>You rolled '
+                                        +$('#dice-str-inp').val()
+                                        +' and got '
+                                        +data.roll
+                                        +'.<br><br><span class="bold">Elements: </span><br>'
+                                        +data.elements.replace(/ \*\*/g,' <span class="bold">').replace(/\(\*\*/g,'(<span class="bold">').replace(/\*\*/g,'</span>')
+                                    );
+                                } else {
+                                    bootbox.alert('<span class="bold">Error: </span><br>There was an error in your roll ('+$('#dice-str-inp').val()+'):<br><br>'+data.reason);
+                                }
+                                $('#dice-str-inp').val('');
+                            }
+                        );
+                    }
+                });
             });
 
 
@@ -2138,6 +2196,20 @@
                 <button id='adv-stop' data-tooltip='End Initiative' data-tooltip-location="right"><img src="assets/stop.png"></button>
             </div>
         </div>
+
+        <div id='dice-tabs' class="noselect">
+            <button id='d4-btn' class='dice-btn noselect'><img src='assets/dice/d4.png'></button>
+            <button id='d6-btn' class='dice-btn noselect'><img src='assets/dice/d6.png'></button>
+            <button id='d8-btn' class='dice-btn noselect'><img src='assets/dice/d8.png'></button>
+            <button id='d10-btn' class='dice-btn noselect'><img src='assets/dice/d10.png'></button>
+            <button id='d12-btn' class='dice-btn noselect'><img src='assets/dice/d12.png'></button>
+            <button id='d20-btn' class='dice-btn noselect'><img src='assets/dice/d20.png'></button>
+            <button id='d100-btn' class='dice-btn noselect'><img src='assets/dice/d100.png'></button>
+            <button id='dcustom-btn' class='dice-btn noselect'><img src='assets/editname.png'></button>
+            <div id='dice-display' class='bold'>You rolled: <span id='roll-result'></span></div>
+            <div id='dice-input'><input id='dice-str-inp' placeholder="Roll String" autocomplete="off"></div>
+        </div>
+        
         
         <div id='display'>
             <div id='display-area'></div>

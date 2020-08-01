@@ -15,7 +15,7 @@ import pickle
 import logging
 import logging.config
 from urllib.parse import urlparse
-import dice
+import d20
 
 # options
 IP = 'localhost'
@@ -602,7 +602,7 @@ class Session:
         self.logger.debug('PC '+fp+' is attacking '+str(args[0]))
         data = json.loads(args[2])
         self.logger.debug('ATK data: '+str(data))
-        roll = int(dice.roll(data['toHit']))
+        roll = int(d20.roll(data['toHit']))
         crit = False
         if (roll == 20):
             crit = True
@@ -619,9 +619,9 @@ class Session:
                 damage_log = []
                 total_damage = 0
                 for d in data['damage']:
-                    damage = int(dice.roll(d['roll']))
+                    damage = int(d20.roll(d['roll']))
                     if crit:
-                        damage += int(dice.roll(d['roll']))
+                        damage += int(d20.roll(d['roll']))
                     for r in [('vuln',2),('resist',0.5),('immune',0)]:
                         if d['type'] in self.characters[args[0]]['resistances'][r[0]]:
                             damage = damage * r[1]
@@ -648,13 +648,13 @@ class Session:
         else:
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['npcs'].keys():
-                    if int(dice.roll(data['toHit'])) >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
+                    if roll >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
                         damage_log = []
                         total_damage = 0
                         for d in data['damage']:
-                            damage = int(dice.roll(d['roll']))
+                            damage = int(d20.roll(d['roll']))
                             if crit:
-                                damage += int(dice.roll(d['roll']))
+                                damage += int(d20.roll(d['roll']))
                             resist = dict(
                                 resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
                                 immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
@@ -696,7 +696,7 @@ class Session:
         self.logger.debug('NPC '+str(args[2])+' is attacking '+str(args[0]))
         data = json.loads(args[3])
         self.logger.debug('ATK data: '+str(data))
-        roll = int(dice.roll(data['toHit']))
+        roll = int(d20.roll(data['toHit']))
         crit = False
         if (roll == 20):
             crit = True
@@ -713,9 +713,9 @@ class Session:
                 damage_log = []
                 total_damage = 0
                 for d in data['damage']:
-                    damage = int(dice.roll(d['roll']))
+                    damage = int(d20.roll(d['roll']))
                     if crit:
-                        damage += int(dice.roll(d['roll']))
+                        damage += int(d20.roll(d['roll']))
                     for r in [('vuln',2),('resist',0.5),('immune',0)]:
                         if d['type'] in self.characters[args[0]]['resistances'][r[0]]:
                             damage = damage * r[1]
@@ -742,13 +742,13 @@ class Session:
         else:
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['npcs'].keys():
-                    if int(dice.roll(data['toHit'])) >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
+                    if roll >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
                         damage_log = []
                         total_damage = 0
                         for d in data['damage']:
-                            damage = int(dice.roll(d['roll']))
+                            damage = int(d20.roll(d['roll']))
                             if crit:
-                                damage += int(dice.roll(d['roll']))
+                                damage += int(d20.roll(d['roll']))
                             resist = dict(
                                 resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
                                 immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
@@ -786,6 +786,17 @@ class Session:
             self.logger.warning('NPC '+str(args[0])+' not found.')
             return {'code':404,'reason':'NPC '+str(args[0])+' not found.'}
 
+    def roll(self,fp,args): # [Roll string]
+        self.logger.debug('User '+fp+' is rolling '+args[0])
+        try:
+            roll = d20.roll(args[0])
+            elements = str(roll)
+            print(elements)
+            self.logger.debug('User '+fp+' rolled '+args[0]+' and got '+str(roll.total)+'. Roll elements: '+elements)
+            return {'code':200,'roll':roll.total,'elements':elements}
+        except d20.errors.RollSyntaxError as e:
+            self.logger.exception('Dice error: ')
+            return {'code':400,'reason':'Dice error: '+str(e)}
                                 
 
         

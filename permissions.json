@@ -23,5 +23,6 @@
     "delete_homebrew":"dm",
     "reload_homebrew":"dm",
     "pc_attack":"pc",
-    "dm_attack":"dm"
+    "dm_attack":"dm",
+    "roll":"pc,dm"
 }
