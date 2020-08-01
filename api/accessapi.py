@@ -2,6 +2,7 @@ import json
 import os
 import requests
 from urllib.parse import urljoin
+from api.pycritter import parse_5e, damage_types
 
 class Item:
     def resolve_list(self,lst):
@@ -31,7 +32,12 @@ def get(resource_type,**terms):
     jsondata = response.json()
     dat = []
     for i in jsondata['results']:
-        dat.append(Item(i))
+        data = i.copy()
+        if resource_type == 'monsters':
+            for a in range(len(data['actions'])):
+                if 'hit' in data['actions'][a]['desc'].lower():
+                    data['actions'][a] = parse_5e(data['actions'][a])
+        dat.append(Item(data))
     return dat
 
 

@@ -78,6 +78,8 @@
                 - !init: It is NOT user's turn in initiative, or it is NOT the turn in the initiative of one of the DM's NPCs
                 - in_init: The user's PC or the selected NPC is in the initiative count
                 - !in_init: The user's PC or the selected NPC is NOT in the initiative count
+                - target_init: It is the target's turn in initiative
+                - !target_init: It is NOT the target's turn in initiative
             */
             var ctxMenu = { // Selectors to activate custom context menu on
                 '.map-container':{
@@ -95,13 +97,15 @@
                     'change-pc-hp':'pc,dm|self',
                     'edit-pc':'pc,dm|self',
                     'claim-pc':'pc|!self',
-                    'attack':'pc|!self,init'
+                    'attack':'pc|!self,init',
+                    'dm-attack':'dm|init'
                 },
                 '.npc-icon':{
                     'remove-npc':'dm',
                     'run-initiative':'dm|!in_init',
                     'remove-initiative':'dm|in_init,!init',
-                    'attack':'pc|init'
+                    'attack':'pc|init',
+                    'dm-attack':'dm|init,!target_init'
                 }
             }; 
 
@@ -1078,6 +1082,23 @@
                                             }
                                         }
                                     }
+                                    if (ctxModifiers.split(',').includes('target_init') && res) {
+                                        if (previousData.session.initiative.active) {
+                                            if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id != currentCtx) {
+                                                res = false
+                                            }
+                                        } else {
+                                            res = false;
+                                        }
+                                    }
+                                    if (ctxModifiers.split(',').includes('!target_init') && res) {
+                                        if (previousData.session.initiative.active) {
+                                            if (previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id == currentCtx) {
+                                                res = false
+                                            }
+                                        }
+                                    }
+                                    
                                     $(children[c]).toggleClass('active',res);
                                     if (res) {
                                         ct++;
@@ -1827,32 +1848,42 @@
                     $('#actions-panel').html('');
                     for (var a=0;a<userAttacks.length;a++) {
                         var atk = userAttacks[a];
-                        var atkDesc = atk.automation[1][atk.automation[1].type].replace('***\n','</span><br>').replace('*** ','</span>').replace('***','<span class="italics">');
-                        var _dmgStr = atk.automation[0].effects[0].hit[0].damage;
-                        var atkRoll = _dmgStr.split('[')[0];
-                        var dmgType = _dmgStr.split('[')[1].replace(']','');
-                        var adv = false;
-                        var dis = false;
-
-                        var _toHit = 'd20';
+                        var atkDesc = atk.automation[1][atk.automation[1].type]
+                            .replace('***\n','</span><br>')
+                            .replace('*** ','</span>')
+                            .replace('***','<span class="italics">')
+                            .replace('**\n','</span><br>')
+                            .replace('** ','</span><br>')
+                            .replace('**','<br><br><span class="bold">');
+                        var _dmgs = String(atk.automation[0].effects[0].hit[0].damage).split(']+');
+                        
+                        var damages = [];
+                        var damageString = [];
+                        for (var d=0;d<_dmgs.length;d++) {
+                            var dtype = _dmgs[d].split('[')[1].replace(']','');
+                            if (dtype.includes('magical')) {
+                                dtype = dtype.split(' ')[1];
+                                var magical = true;
+                            } else {
+                                var magical = false;
+                            }
+                            damages.push({
+                                "roll":_dmgs[d].split('[')[0].replace('+-','-'),
+                                "type":dtype,
+                                "magical":magical
+                            });
+                            if (magical) {
+                                damageString.push(_dmgs[d].split('[')[0].replace('+-','-')+' magical '+dtype+' damage');
+                            } else {
+                                damageString.push(_dmgs[d].split('[')[0].replace('+-','-')+' '+dtype+' damage');
+                            }
+                        }
+                        damageString = damageString.join(' plus ')+'.';
                         var bonus = atk.automation[0].effects[0].attackBonus;
-                        if (adv) {
-                            _toHit = '2'+_toHit+'h1';
-                        } else if (dis) {
-                            _toHit = '2'+_toHit+'l1';
-                        }
-
-                        if (bonus < 0) {
-                            _toHit += '-'+bonus;
-                        } else {
-                            _toHit += '+'+bonus;
-                        }
 
                         var atkData = {
-                            "bonus":bonus,
-                            "roll":atkRoll,
-                            "type":dmgType,
-                            "magic":false
+                            'bonus':bonus,
+                            'damage':damages
                         };
 
                         var mainAtkEl = $(
@@ -1860,36 +1891,45 @@
                             '<div class="atk-title">'+atk.name+'</div>'+
                             '<div class="atk-content"><span class="bold">Description:</span><br> '+atkDesc+'</div>'+
                             '<div class="atk-stats">'+
-                            '<span class="bold">Bonus:</span> '+bonus+'<br>'+
-                            '<span class="bold">Damage:</span> '+atkRoll+'<br>'+
-                            '<span class="bold">Type:</span> '+dmgType+
+                            '<span class="bold">Attack Bonus:</span> '+bonus+'<br>'+
+                            '<span class="bold">Damage:</span> '+damageString+'<br>'+
                             '</div>'+
                             '</div>'
                         ).click(function(event){
-                            var atkData = JSON.parse($(event.delegateTarget).attr('data'));
-                            var _toHit = 'd20';
-                            var bonus = atkData.bonus;
-                            var adv = $('#switch-adv input').prop('checked');
-                            var dis = $('#switch-dis input').prop('checked');
-                            atkData.magic = $('#switch-magic input').prop('checked');
-                            if (adv) {
-                                _toHit = '2'+_toHit+'h1';
-                            } else if (dis) {
-                                _toHit = '2'+_toHit+'l1';
+                            var data = JSON.parse($(event.delegateTarget).attr('data'));
+                            var magicOverride = $('#switch-magic').prop('checked');
+                            if (magicOverride) {
+                                for (var a=0;a<data.damage.length;a++) {
+                                    data.damage[a].magical = true;
+                                }
                             }
-
-                            if (bonus < 0) {
-                                _toHit += '-'+bonus;
-                            } else {
-                                _toHit += '+'+bonus;
+                            var toHit = 'd20';
+                            if ($('#switch-adv input').prop('checked') == true) {
+                                toHit += '^1';
+                            } else if ($('#switch-dis input').prop('checked') == true) {
+                                toHit += 'v1';
                             }
-                            atkData['toHit'] = _toHit;
-                            console.log(atkData);
+                            data.toHit = toHit;
                             scmd(
                                 'pc_attack',
-                                [currentInitTarget,$(currentInitTarget).attr('mapid'),JSON.stringify(atkData)],
+                                [currentInitTarget,$('#'+currentInitTarget).attr('mapid'),JSON.stringify(data)],
                                 function(data) {
-                                    console.log(data);
+                                    if (data.code == 200) {
+                                        var result = JSON.parse(data.result);
+                                        var rollData = 'You rolled a '+data.result.roll.roll+' on the d20 ('+data.result.roll.bonus_roll+' with modifiers applied).<br>'
+                                        if (data.result.roll.crit) {
+                                            rollData += ' Critical (Damage dice doubled on a hit).<br>';
+                                        }
+                                        if (result.hit) {
+                                            if (result.ko) {
+                                                bootbox.alert(rollData+'You hit your target, dealing '+result.damage+'.<br> Your target was killed/knocked out.');
+                                            } else {
+                                                bootbox.alert(rollData+'You hit your target, dealing '+result.damage+'.');
+                                            }
+                                        } else {
+                                            bootbox.alert(rollData+'You missed your target.');
+                                        }
+                                    }
                                     command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
                                 }
                             );
@@ -1906,6 +1946,125 @@
                     $('#initiative-sidebar').toggleClass('active',true);
                     console.log('clicked');
                 });
+                $('#ctx_dm-attack').click(function(event){
+                    currentInitTarget = currentCtx;
+                    var map = null;
+                    for (var m=0;m<previousData.session.maps.length;m++) {
+                        if (previousData.session.maps[m].id == $('#'+currentInitTarget).attr('mapid')) {
+                            map = previousData.session.maps[m];
+                            break;
+                        }
+                    }
+                    if (!map) {
+                        return;
+                    }
+
+                    var npcData = map.npcs[previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id].data;
+                    if (whatIsIt(npcData) == "string") {
+                        npcData = JSON.parse(npcData);
+                    }
+
+                    var npcAttacks = npcData.actions;
+                    console.log(npcAttacks);
+                    $('#actions-panel').html('');
+                    for (var a=0;a<npcAttacks.length;a++) {
+                        var atk = npcAttacks[a];
+                        var atkDesc = atk.desc;
+                        if (atk.automated) {
+                            var atkData = {
+                                'bonus':atk.attack_bonus,
+                                'damage':atk.damage,
+                                'magical':false
+                            };
+                            if (atk.attack_bonus >= 0) {
+                                var bonus = '+'+atk.attack_bonus.toString();
+                            } else {
+                                var bonus = atk.attack_bonus.toString();
+                            }
+                            var _dmgs = atk.damage;
+                            var damageString = [];
+                            for (var d=0;d<_dmgs.length;d++) {
+                                damageString.push(_dmgs[d].roll.toString()+' '+_dmgs[d].type.toString()+' damage');
+                            }
+                            damageString = damageString.join(' plus ')+'.';
+
+                            var mainAtkEl = $(
+                                '<div id="atk_'+atk.name+'" name="'+atk.name+'" data=\''+JSON.stringify(atkData)+'\' class="atk-box">'+
+                                '<div class="atk-title">'+atk.name+'</div>'+
+                                '<div class="atk-content"><span class="bold">Description:</span><br> '+atkDesc+'</div>'+
+                                '<div class="atk-stats">'+
+                                '<span class="bold">Attack Bonus:</span> '+bonus+'<br>'+
+                                '<span class="bold">Damage:</span> '+damageString+'<br>'+
+                                '</div>'+
+                                '</div>'
+                            ).click(function(event){
+                                var data = JSON.parse($(event.delegateTarget).attr('data'));
+                                var magicOverride = $('#switch-magic').prop('checked');
+                                if (magicOverride) {
+                                    for (var a=0;a<data.damage.length;a++) {
+                                        data.damage[a].magical = true;
+                                    }
+                                }
+                                var toHit = 'd20';
+                                if ($('#switch-adv input').prop('checked') == true) {
+                                    toHit += '^1';
+                                } else if ($('#switch-dis input').prop('checked') == true) {
+                                    toHit += 'v1';
+                                }
+                                data.toHit = toHit;
+                                scmd(
+                                    'dm_attack',
+                                    [
+                                        currentInitTarget,
+                                        $('#'+currentInitTarget).attr('mapid'),
+                                        previousData.session.initiative.order[previousData.session.initiative.rolls[previousData.session.initiative.index]].id,
+                                        JSON.stringify(data)
+                                    ],
+                                    function(data) {
+                                        if (data.code == 200) {
+                                            var result = JSON.parse(data.result);
+                                            var rollData = 'You rolled a '+result.roll.roll+' on the d20 ('+result.roll.bonus_roll+' with modifiers applied).<br>'
+                                            if (result.roll.crit) {
+                                                rollData += ' Critical (Damage dice doubled on a hit).<br>';
+                                            }
+                                            if (result.hit) {
+                                                if (result.ko) {
+                                                    bootbox.alert(rollData+'You hit your target, dealing '+result.damage+'.<br> Your target was killed/knocked out.');
+                                                } else {
+                                                    bootbox.alert(rollData+'You hit your target, dealing '+result.damage+'.');
+                                                }
+                                            } else {
+                                                bootbox.alert(rollData+'You missed your target.');
+                                            }
+                                        }
+                                        command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                                    }
+                                );
+                                $(document).click();
+                                currentInitTarget = null;
+                            });
+                        } else {
+                            var mainAtkEl = $(
+                                '<div id="atk_'+atk.name+'" name="'+atk.name+'" class="atk-box">'+
+                                '<div class="atk-title">'+atk.name+'</div>'+
+                                '<div class="atk-content"><span class="bold">Description:</span><br> '+atkDesc+'</div>'+
+                                '<div class="atk-stats"><span class="italics">Automation is not available for this action.</span></div>'+
+                                '</div>'
+                            );
+                        }
+
+
+                        $('#actions-panel').append(mainAtkEl);
+                    }
+
+                    sidebarActivating = true;
+                    setTimeout(function(){
+                        sidebarActivating = false;
+                    },0.5);
+                    $('#initiative-sidebar').toggleClass('active',true);
+                    console.log('clicked');
+                });
+
                 $('#switch-adv input').click(function(){$('#switch-dis input').prop('checked',false)});
                 $('#switch-dis input').click(function(){$('#switch-adv input').prop('checked',false)});
             });
@@ -1945,6 +2104,7 @@
             <button class='ctx-button' id='ctx_edit-pc' ctx='edit-pc'>Edit Statistics</button>
             <button class='ctx-button' id='ctx_claim-pc' ctx='claim-pc'>Claim Character</button>
             <button class='ctx-button' id='ctx_attack' ctx='attack'>Attack</button>
+            <button class='ctx-button' id='ctx_dm-attack' ctx='dm-attack'>Attack</button>
         </div>
 
         <div id='cursors-bar'>

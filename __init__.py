@@ -551,10 +551,26 @@ class Session:
                     self.initiative_data['rolls'].remove(to_delete)
             return {'code':200,'data':self.initiative_data['rolls']}
         elif args[0] == 'next' and dat['type'] == 'dm':
-            self.initiative_data['index'] += 1
-            if self.initiative_data['index'] >= len(self.initiative_data['rolls']):
-                self.initiative_data['index'] = 0
+            while True:
+                self.initiative_data['index'] += 1
+                if self.initiative_data['index'] >= len(self.initiative_data['rolls']):
+                    self.initiative_data['index'] = 0
+                if self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]['type'] == 'dm':
+                    found = False
+                    for m in self.maps:
+                        if self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]['id'] in m['npcs'].keys():
+                            found = True
+                    if not found:
+                        self.logger.debug('Deleting NPC '+self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]['id']+' because it has died.')
+                        del self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]
+                        del self.initiative_data['rolls'][self.initiative_data['index']]
+                    else:
+                        break
+                else:
+                    break
+                        
             return {'code':200,'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]]}
+            
         elif args[0] == 'end' and dat['type'] == 'dm':
             self.initiative_data = {
                 'active':False,
@@ -584,54 +600,189 @@ class Session:
     
     def pc_attack(self,fp,args): # [Target, Map ID, Attack data]
         self.logger.debug('PC '+fp+' is attacking '+str(args[0]))
-        self.logger.debug('ATK data: '+str(args[2]))
         data = json.loads(args[2])
-        damage = int(dice.roll(data['roll']))
+        self.logger.debug('ATK data: '+str(data))
+        roll = int(dice.roll(data['toHit']))
+        crit = False
+        if (roll == 20):
+            crit = True
+        
+        rollData = {
+            'roll':roll,
+            'bonus_roll':roll + int(data['bonus']),
+            'crit':crit
+        }
+        
+        roll += int(data['bonus'])
         if args[0] in self.characters.keys():
-            if int(dice.roll(data['toHit'])) >= int(self.characters[args[0]]['ac']):
-                for r in [('vuln',2),('resist',0.5),('immune',0)]:
-                    if data['type'] in self.characters[args[0]]['resistances'][r[0]]:
-                        damage = damage * r[1]
-                damage = int(damage)
-                self.characters[args[0]]['hp'] -= damage
-                self.logger.debug('PC '+fp+' dealt '+str(damage)+' to '+str(self.characters[args[0]]['name']))
+            if roll >= int(self.characters[args[0]]['ac']):
+                damage_log = []
+                total_damage = 0
+                for d in data['damage']:
+                    damage = int(dice.roll(d['roll']))
+                    if crit:
+                        damage += int(dice.roll(d['roll']))
+                    for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                        if d['type'] in self.characters[args[0]]['resistances'][r[0]]:
+                            damage = damage * r[1]
+                    damage = abs(int(damage))
+                    total_damage += damage
+                    damage_log.append(str(damage)+' '+d['type']+' damage')
+                self.characters[args[0]]['hp'] -= total_damage
+                damage_log = ', '.join(damage_log).rpartition(', ')
+                if damage_log[0] == '':
+                    damage_log = damage_log[2]
+                else:
+                    damage_log = damage_log[0] + ', and ' + damage_log[2]
+                self.logger.debug('PC '+fp+' dealt '+damage_log+' to '+str(self.characters[args[0]]['name']))
+                KO = False
                 if self.characters[args[0]]['hp'] < 0:
                     self.characters[args[0]]['hp'] = 0
                     self.logger.debug('PC '+fp+' knocked out PC '+str(args[0]))
-                return {'code':200,'result':json.dumps({'hit':True,'damage':damage})}
+                    KO = True
+                return {'code':200,'result':json.dumps({'hit':True,'damage':damage_log,'ko':KO,'roll':rollData})}
             else:
                 self.logger.debug('PC '+fp+' missed their attack on '+str(args[0]))
+                return {'code':200,'result':json.dumps({'hit':False,'damage':None,'ko':False,'roll':rollData})}
+            
+        else:
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['npcs'].keys():
+                    if int(dice.roll(data['toHit'])) >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
+                        damage_log = []
+                        total_damage = 0
+                        for d in data['damage']:
+                            damage = int(dice.roll(d['roll']))
+                            if crit:
+                                damage += int(dice.roll(d['roll']))
+                            resist = dict(
+                                resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
+                                immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
+                                vuln = self.maps[m]['npcs'][args[0]]['data']['damage_vulnerabilities'].replace(', ','|').split(',')
+                            )
+                            for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                                for k in resist[r[0]]:
+                                    if d['type'] == k:
+                                        damage = damage * r[1]
+                                        break
+                                    if ('nonmagic' in k or 'non-magic' in k) and not d['magical']:
+                                        for _d in ['piercing','slashing','bludgeoning']:
+                                            if d['type'] == _d and _d in k:
+                                                damage = damage * r[1]
+                                                break
+                            damage = abs(int(damage))
+                            total_damage += damage
+                            damage_log.append(str(damage)+' '+d['type']+' damage')
+                        self.maps[m]['npcs'][args[0]]['hp'] -= total_damage
+                        damage_log = ', '.join(damage_log).rpartition(', ')
+                        if damage_log[0] == '':
+                            damage_log = damage_log[2]
+                        else:
+                            damage_log = damage_log[0] + ', and ' + damage_log[2]
+                        self.logger.debug('PC '+fp+' dealt '+damage_log+' to NPC '+str(args[0]))
+                        KO = False
+                        if self.maps[m]['npcs'][args[0]]['hp'] <= 0:
+                            self.logger.debug('PC '+fp+' killed NPC '+str(args[0]))
+                            del self.maps[m]['npcs'][args[0]]
+                            KO = True
+                        return {'code':200,'result':json.dumps({'hit':True,'damage':damage_log,'ko':KO,'roll':rollData})}
+                    else:
+                        self.logger.debug('PC '+fp+' missed their attack on '+str(args[0]))
+                        return {'code':200,'result':json.dumps({'hit':False,'damage':None,'ko':False,'roll':rollData})}
+            self.logger.warning('NPC '+str(args[0])+' not found.')
+            return {'code':404,'reason':'NPC '+str(args[0])+' not found.'}
+        
+    def dm_attack(self,fp,args): # [Target, Map ID, Source, Attack data]
+        self.logger.debug('NPC '+str(args[2])+' is attacking '+str(args[0]))
+        data = json.loads(args[3])
+        self.logger.debug('ATK data: '+str(data))
+        roll = int(dice.roll(data['toHit']))
+        crit = False
+        if (roll == 20):
+            crit = True
+        
+        rollData = {
+            'roll':roll,
+            'bonus_roll':roll + int(data['bonus']),
+            'crit':crit
+        }
+        
+        roll += int(data['bonus'])
+        if args[0] in self.characters.keys():
+            if roll >= int(self.characters[args[0]]['ac']):
+                damage_log = []
+                total_damage = 0
+                for d in data['damage']:
+                    damage = int(dice.roll(d['roll']))
+                    if crit:
+                        damage += int(dice.roll(d['roll']))
+                    for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                        if d['type'] in self.characters[args[0]]['resistances'][r[0]]:
+                            damage = damage * r[1]
+                    damage = abs(int(damage))
+                    total_damage += damage
+                    damage_log.append(str(damage)+' '+d['type']+' damage')
+                self.characters[args[0]]['hp'] -= total_damage
+                damage_log = ', '.join(damage_log).rpartition(', ')
+                if damage_log[0] == '':
+                    damage_log = damage_log[2]
+                else:
+                    damage_log = damage_log[0] + ', and ' + damage_log[2]
+                self.logger.debug('NPC '+str(args[2])+' dealt '+damage_log+' to '+str(self.characters[args[0]]['name']))
+                KO = False
+                if self.characters[args[0]]['hp'] < 0:
+                    self.characters[args[0]]['hp'] = 0
+                    self.logger.debug('NPC '+str(args[2])+' knocked out PC '+str(args[0]))
+                    KO = True
+                return {'code':200,'result':json.dumps({'hit':True,'damage':damage_log,'ko':KO,'roll':rollData})}
+            else:
+                self.logger.debug('NPC '+str(args[2])+' missed their attack on NPC '+str(args[0]))
                 return {'code':200,'result':json.dumps({'hit':False,'damage':None})}
             
         else:
             for m in range(len(self.maps)):
                 if args[0] in self.maps[m]['npcs'].keys():
                     if int(dice.roll(data['toHit'])) >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
-                        resist = dict(
-                            resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
-                            immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
-                            vuln = self.maps[m]['npcs'][args[0]]['data']['damage_vulnerabilities'].replace(', ','|').split(',')
-                        )
-                        for r in [('vuln',2),('resist',0.5),('immune',0)]:
-                            for k in resist[r[0]]:
-                                if data['type'] == k:
-                                    damage = damage * r[1]
-                                    break
-                                if ('nonmagic' in k or 'non-magic' in k) and not data['magic']:
-                                    for d in ['piercing','slashing','bludgeoning']:
-                                        if data['type'] == d and d in k:
-                                            damage = damage * r[1]
-                                            break
-                        damage = int(damage)
-                        self.maps[m]['npcs'][args[0]]['hp'] -= damage
-                        self.logger.debug('PC '+fp+' dealt '+str(damage)+' to NPC '+str(args[0]))
+                        damage_log = []
+                        total_damage = 0
+                        for d in data['damage']:
+                            damage = int(dice.roll(d['roll']))
+                            if crit:
+                                damage += int(dice.roll(d['roll']))
+                            resist = dict(
+                                resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
+                                immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
+                                vuln = self.maps[m]['npcs'][args[0]]['data']['damage_vulnerabilities'].replace(', ','|').split(',')
+                            )
+                            for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                                for k in resist[r[0]]:
+                                    if d['type'] == k:
+                                        damage = damage * r[1]
+                                        break
+                                    if ('nonmagic' in k or 'non-magic' in k) and not d['magical']:
+                                        for _d in ['piercing','slashing','bludgeoning']:
+                                            if d['type'] == _d and _d in k:
+                                                damage = damage * r[1]
+                                                break
+                            damage = abs(int(damage))
+                            total_damage += damage
+                            damage_log.append(str(damage)+' '+d['type']+' damage')
+                        self.maps[m]['npcs'][args[0]]['hp'] -= total_damage
+                        damage_log = ', '.join(damage_log).rpartition(', ')
+                        if damage_log[0] == '':
+                            damage_log = damage_log[2]
+                        else:
+                            damage_log = damage_log[0] + ', and ' + damage_log[2]
+                        self.logger.debug('PC '+fp+' dealt '+damage_log+' to NPC '+str(args[0]))
+                        KO = False
                         if self.maps[m]['npcs'][args[0]]['hp'] <= 0:
                             self.logger.debug('PC '+fp+' killed NPC '+str(args[0]))
                             del self.maps[m]['npcs'][args[0]]
-                        return {'code':200,'result':json.dumps({'hit':True,'damage':damage})}
+                            KO = True
+                        return {'code':200,'result':json.dumps({'hit':True,'damage':damage_log,'ko':KO,'roll':rollData})}
                     else:
                         self.logger.debug('PC '+fp+' missed their attack on '+str(args[0]))
-                        return {'code':200,'result':json.dumps({'hit':False,'damage':None})}
+                        return {'code':200,'result':json.dumps({'hit':False,'damage':None,'ko':False,'roll':rollData})}
             self.logger.warning('NPC '+str(args[0])+' not found.')
             return {'code':404,'reason':'NPC '+str(args[0])+' not found.'}
 

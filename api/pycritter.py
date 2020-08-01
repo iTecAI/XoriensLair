@@ -329,6 +329,8 @@ def logout():
 #math libs
 from fractions import Fraction
 
+damage_types = ['acid', 'bludgeoning', 'cold', 'fire', 'force', 'lightning', 'necrotic', 'piercing', 'poison', 'psychic', 'radiant', 'slashing', 'thunder']
+
 class Item: #Item class from accessapi code
     def resolve_list(self,lst):
         rl = []
@@ -350,6 +352,31 @@ class Item: #Item class from accessapi code
             else:
                 setattr(self,d,dct[d])
 
+def parse_5e(action):
+    try:
+        if action['desc'].startswith('Melee Weapon Attack: ') or action['desc'].startswith('Ranged Weapon Attack: '):
+            damages = re.split(r'.{0,50}: ',action['desc'])[2].split(' plus ')
+        else:
+            damages = action['desc'].split(' Hit: ')[1].split(' plus ')
+        damage_exps = []
+        for d in damages:
+            damage_exp = {}
+            damage_exp['roll'] = re.split(r'\).{0,1000}',re.split(r'.{0,50}\(',d)[1])[0].replace(' ','')
+            damage_exp['type'] = 'bludgeoning'
+            for dt in damage_types:
+                if dt in d:
+                    damage_exp['type'] = dt
+            damage_exps.append(damage_exp)
+
+        bonus = int(action['desc'].split(': ')[1].split(',')[0].split(' ')[0].lower().strip('+ .,!?qwertyuiopasdfghjklzxcvbnm'))
+        action['attack_bonus'] = bonus
+        action['damage'] = damage_exps
+        action['automated'] = True
+        return action
+    except:
+        action['automated'] = False
+        return action
+
 def action_parse(action): # Parse an action string
     try:
         if action['desc'].startswith('<i>Melee Weapon Attack:</i>') or action['desc'].startswith('<i>Ranged Weapon Attack:</i>'):
@@ -358,17 +385,28 @@ def action_parse(action): # Parse an action string
             info['attack'] = [i.strip('.,+ ') for i in initial_parse[0].split(', ')][:2]
             info['damage'] = [i.strip('., ') for i in initial_parse[1].split(' plus ')]
             
+            damages = []
+            for i in info['damage']:
+                roll = re.split(r'\).{0,1000}',re.split(r'.{0,50}\(',i)[1])[0].replace(' ','')
+                dtype = 'bludgeoning'
+                for d in damage_types:
+                    if d in i:
+                        dtype = d
+                damages.append({
+                    'roll':roll,
+                    'type':dtype
+                })
+            
             ret = action
             ret['attack_bonus'] = int(info['attack'][0].split(' ')[0])
-            rollstr = []
-            for i in info['damage']:
-                rollstr.append(re.split(r'\).{0,1000}',re.split(r'.{0,50}\(',i)[1])[0].replace(' ',''))
-            ret['damage_dice'] = '+'.join(rollstr)
-
+            ret['damage'] = damages
+            ret['automated'] = True
             return ret
         else:
+            action['automated'] = False
             return action
     except:
+        action['automated'] = False
         return action
 
 def get_mod(score): #code from character to translate a score into a modifier
@@ -545,5 +583,5 @@ def api_get_bestiary(ID):
 
 if __name__ == "__main__":
     with open('bestiary.json','w') as f:
-        #json.dump(api_get_creature('5ed28cc663a0580dfd7cf4d2'),f)
-        json.dump(get_creature('5ed28cc663a0580dfd7cf4d2'),f)
+        json.dump(api_get_creature('5ed28cc663a0580dfd7cf4d2'),f)
+        #json.dump(get_creature('5ed28cc663a0580dfd7cf4d2'),f)
