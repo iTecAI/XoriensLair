@@ -15,7 +15,7 @@ import pickle
 import logging
 import logging.config
 from urllib.parse import urlparse
-from dice import roll
+import dice
 
 # options
 IP = 'localhost'
@@ -457,11 +457,18 @@ class Session:
                     'next':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']+1]]
                     }
             except IndexError:
-                return {
-                    'code':200,
-                    'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]],
-                    'next':self.initiative_data['order'][self.initiative_data['rolls'][0]]
-                    }
+                try:
+                    return {
+                        'code':200,
+                        'current':self.initiative_data['order'][self.initiative_data['rolls'][self.initiative_data['index']]],
+                        'next':self.initiative_data['order'][self.initiative_data['rolls'][0]]
+                        }
+                except IndexError:
+                    return {
+                        'code':200,
+                        'current':self.initiative_data['order'][self.initiative_data['rolls'][0]],
+                        'next':self.initiative_data['order'][self.initiative_data['rolls'][0]]
+                        }
         elif args[0] == 'remove':
             if dat['type'] == 'pc':
                 to_delete = None
@@ -512,8 +519,61 @@ class Session:
         self.logger.warning('User error - Character not found. User '+fp)
         return {'code':404,'reason':'Character not found'}
     
-    def pc_attack(self,fp,args): # [Target, Attack data]
-        pass
+    def pc_attack(self,fp,args): # [Target, Map ID, Attack data]
+        self.logger.debug('PC '+fp+' is attacking '+str(args[0]))
+        self.logger.debug('ATK data: '+str(args[2]))
+        data = json.loads(args[2])
+        damage = int(dice.roll(data['roll']))
+        if args[0] in self.characters.keys():
+            if int(dice.roll(data['toHit'])) >= int(self.characters[args[0]]['ac']):
+                for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                    if data['type'] in self.characters[args[0]]['resistances'][r[0]]:
+                        damage = damage * r[1]
+                damage = int(damage)
+                self.characters[args[0]]['hp'] -= damage
+                self.logger.debug('PC '+fp+' dealt '+str(damage)+' to '+str(self.characters[args[0]]['name']))
+                if self.characters[args[0]]['hp'] < 0:
+                    self.characters[args[0]]['hp'] = 0
+                    self.logger.debug('PC '+fp+' knocked out PC '+str(args[0]))
+                return {'code':200,'result':json.dumps({'hit':True,'damage':damage})}
+            else:
+                self.logger.debug('PC '+fp+' missed their attack on '+str(args[0]))
+                return {'code':200,'result':json.dumps({'hit':False,'damage':None})}
+            
+        else:
+            for m in range(len(self.maps)):
+                if args[0] in self.maps[m]['npcs'].keys():
+                    if int(dice.roll(data['toHit'])) >= int(self.maps[m]['npcs'][args[0]]['data']['armor_class']):
+                        resist = dict(
+                            resist = self.maps[m]['npcs'][args[0]]['data']['damage_resistances'].replace(', ','|').split(','),
+                            immune = self.maps[m]['npcs'][args[0]]['data']['damage_immunities'].replace(', ','|').split(','),
+                            vuln = self.maps[m]['npcs'][args[0]]['data']['damage_vulnerabilities'].replace(', ','|').split(',')
+                        )
+                        for r in [('vuln',2),('resist',0.5),('immune',0)]:
+                            for k in resist[r[0]]:
+                                if data['type'] == k:
+                                    damage = damage * r[1]
+                                    break
+                                if 'nonmagic' in k or 'non-magic' in k:
+                                    for d in ['piercing','slashing','bludgeoning']:
+                                        if data['type'] == d and d in k:
+                                            damage = damage * r[1]
+                                            break
+                        damage = int(damage)
+                        self.maps[m]['npcs'][args[0]]['hp'] -= damage
+                        self.logger.debug('PC '+fp+' dealt '+str(damage)+' to NPC '+str(args[0]))
+                        if self.maps[m]['npcs'][args[0]]['hp'] <= 0:
+                            self.logger.debug('PC '+fp+' killed NPC '+str(args[0]))
+                            del self.maps[m]['npcs'][args[0]]
+                        return {'code':200,'result':json.dumps({'hit':True,'damage':damage})}
+                    else:
+                        self.logger.debug('PC '+fp+' missed their attack on '+str(args[0]))
+                        return {'code':200,'result':json.dumps({'hit':False,'damage':None})}
+            self.logger.warning('NPC '+str(args[0])+' not found.')
+            return {'code':404,'reason':'NPC '+str(args[0])+' not found.'}
+
+                                
+
         
 
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets

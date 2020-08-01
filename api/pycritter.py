@@ -444,6 +444,9 @@ def api_get_creature(ID=None,_dict=None,instance=None):
     output['armor_class'] = item.stats.armorClass
     output['armor_desc'] = str(item.stats.armorType).lower()
     output['challenge_rating'] = str(Fraction.from_float(item.stats.challengeRating))
+    output['damage_resistances'] = ','.join([i.lower() for i in item.stats.damageResistances])
+    output['damage_vulnerabilities'] = ','.join([i.lower() for i in item.stats.damageVulnerabilities])
+    output['damage_immunities'] = ','.join([i.lower() for i in item.stats.damageImmunities])
     prof = item.stats.proficiencyBonus
 
     #determine HP & HD
