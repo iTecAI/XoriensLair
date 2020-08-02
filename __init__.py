@@ -861,6 +861,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         self.logger = logging.LoggerAdapter(logging.getLogger('root'),{'location':'MAIN'})
         self.logger.setLevel(LOG_LEVEL)
         self.logger.debug('Instance loaded.')
+        self.cached = {}
     
     def _check(self):
         for i in ['sessions','u_expire','logger','new_session','new_user','check_user','get_user_index','edit_name','session_cmd','get_session_info','modify_session','purge_session']:
@@ -994,6 +995,17 @@ class RunningInstance: # Currently running instance, maintains stateful presence
     
     def get_session_info(self,data): # sid
         # Get information relating to the session
+        if data['sid'] in self.cached.keys():
+            if os.path.exists('cache'):
+                if os.path.exists(os.path.join('cache','session_'+str(data['sid'])+'.cache')):
+                    with open(os.path.join('cache','session_'+str(data['sid'])+'.cache'),'rb') as cache:
+                        self.sessions[data['sid']] = pickle.load(cache)
+                        self.logger.debug('Loaded session '+data['sid']+' from cache')
+                    os.remove(os.path.join('cache','session_'+str(data['sid'])+'.cache'))
+                del self.cached[data['sid']]
+            else:
+                self.logger.error('Cache folder deleted. Clearing cache registry.')
+                self.cached = {}
         if data['sid'] in self.sessions.keys():
             usersDict = {}
             c = 0
@@ -1088,8 +1100,27 @@ def check_all():
                     if instance.u_expire[instance.sessions[i]['users'][u]['fingerprint']] < time.time() and instance.sessions[i]['users'][u]['active']:
                         instance.sessions[i]['users'][u]['active'] = False
                         ROOTLOG.debug(instance.sessions[i]['users'][u]['fingerprint'] + ' lost connection.')
+                if instance.sessions[i]['last_update']+int(CONFIG['Sessions']['cacheSession']) < time.time():
+                    ROOTLOG.debug('Caching session '+str(i))
+                    if not os.path.exists('cache'):
+                        os.makedirs('cache')
+                    with open(os.path.join('cache','session_'+str(i)+'.cache'),'wb') as cache:
+                        pickle.dump(instance.sessions[i],cache)
+                    del nse[i]
+                    instance.cached[str(i)] = instance.sessions[i]['expire']
             else:
-                ROOTLOG.info('Killed session'+str(i))
+                ROOTLOG.info('Killed session '+str(i))
+        
+        new_cached = {}
+        for c in instance.cached.keys():
+            if instance.cached[c] >= datetime.datetime.now()+datetime.timedelta(days=int(CONFIG['Sessions']['maintainSession'])):
+                ROOTLOG.info('Killing cached session '+str(c))
+                if os.path.exists(os.path.join('cache','session_'+str(c)+'.cache')):
+                    os.remove(os.path.join('cache','session_'+str(c)+'.cache'))
+            else:
+                new_cached[c] = instance.cached[c]
+        instance.cached = new_cached
+                
 
         with open('state.stor','wb') as store:
             pickle.dump(instance,store)
