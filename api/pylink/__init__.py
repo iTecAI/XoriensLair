@@ -5,8 +5,6 @@ import urllib.parse
 import os
 
 import logging
-import logging.config
-logging.config.fileConfig(os.path.join('api','pylink','logging.conf'))
 
 def process_requestline(line):
     # b'command=test&kwargs%5Btest%5D=1'
@@ -49,7 +47,7 @@ def make_handler(_link):
 class PyLink:
     def __init__(self,ip,server_port,api_port,directory=None,python_path='python',server_path='server.py',**commands):
         self.server = None
-        self.logger = logging.getLogger('root')
+        self.logger = logging.LoggerAdapter(logging.getLogger('root'),{'location':'PYLINK'})
         self.api = HTTPServer((ip,api_port),make_handler(self))
         self.commands = commands
         self.python_path = python_path

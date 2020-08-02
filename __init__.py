@@ -16,21 +16,27 @@ import logging
 import logging.config
 from urllib.parse import urlparse
 import d20
+from configparser import ConfigParser
+
+CONFIG = ConfigParser()
+with open(os.path.join('config','server.conf'),'r') as cfg:
+    CONFIG.read_file(cfg)
+
 
 # options
-IP = 'localhost'
-S_PORT = 1022
-A_PORT = 1023
+IP = CONFIG['Runtime']['hostIP']
+S_PORT = int(CONFIG['Runtime']['serverPort'])
+A_PORT = int(CONFIG['Runtime']['apiPort'])
 DIR = os.path.join(os.getcwd(),'client/')
 
-LOGMODE = 'debug'
-#LOGMODE = 'server'
+LOG_LEVEL = CONFIG['Runtime']['logLevel']
 
-MAX_LOG_SIZE = 10000000 # Max log size 10 MB
+MAX_LOG_SIZE = int(CONFIG['Runtime']['maxLogSize'])
 
 class Session:
     def __init__(self,instance,_id,session=None,name='None'):
-        self.logger = logging.LoggerAdapter(logging.getLogger('session_'+LOGMODE),{'sessionname':name})
+        self.logger = logging.LoggerAdapter(logging.getLogger('root'),{'location':'SESSION_'+name})
+        self.logger.setLevel(LOG_LEVEL)
         self.id = _id
         if session:
             self.logger.debug('Loaded session from file.')
@@ -852,7 +858,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         self.sessions = {}
         self.users = []
         self.u_expire = {}
-        self.logger = logging.getLogger('instance_'+LOGMODE)
+        self.logger = logging.LoggerAdapter(logging.getLogger('root'),{'location':'MAIN'})
+        self.logger.setLevel(LOG_LEVEL)
         self.logger.debug('Instance loaded.')
     
     def _check(self):
@@ -872,7 +879,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 'name':data['name'],
                 'password':data['password'],
                 'instance':Session(self,data['id'],session=data['session'],name=data['name']),
-                'expire':datetime.datetime.now()+datetime.timedelta(days=14),
+                'expire':datetime.datetime.now()+datetime.timedelta(days=int(CONFIG['Sessions']['maintainSession'])),
+                'last_update':time.time(),
                 'users':[
                      {
                         'name':'Dungeon Master',
@@ -886,14 +894,15 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     'rollLogging':True
                 }
             }
-            self.u_expire[data['fingerprint']] = time.time()+30
+            self.u_expire[data['fingerprint']] = time.time()+int(CONFIG['Users']['userTimeout'])
         else:
             self.logger.debug('Creating session.')
             self.sessions[data['id']] = {
                 'name':data['name'],
                 'password':data['password'],
                 'instance':Session(self,data['id'],name=data['name']),
-                'expire':datetime.datetime.now()+datetime.timedelta(days=14),
+                'expire':datetime.datetime.now()+datetime.timedelta(days=int(CONFIG['Sessions']['maintainSession'])),
+                'last_update':time.time(),
                 'users':[
                      {
                         'name':'Dungeon Master',
@@ -907,7 +916,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     'rollLogging':True
                 }
             }
-            self.u_expire[data['fingerprint']] = time.time()+30
+            self.u_expire[data['fingerprint']] = time.time()+int(CONFIG['Users']['userTimeout'])
         code, r = self.check_user({'fingerprint':data['fingerprint']})
         return code, r
     
@@ -925,7 +934,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     'active':True,
                     'messages':[]
                 })
-                self.u_expire[data['fingerprint']] = time.time()+30
+                self.u_expire[data['fingerprint']] = time.time()+int(CONFIG['Users']['userTimeout'])
                 code, r = self.check_user({'fingerprint':data['fingerprint']})
                 return code, r
             self.logger.warning('User',data['fingerprint'],'tried to join session',data['id'],'with incorrect password',data['password'])
@@ -991,11 +1000,12 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             for i in self.sessions[data['sid']]['users']:
                 usersDict[i['fingerprint']] = i
                 if self.sessions[data['sid']]['users'][c]['fingerprint'] == data['print']:
-                    self.u_expire[data['print']] = time.time()+30
+                    self.u_expire[data['print']] = time.time()+int(CONFIG['Users']['userTimeout'])
                     self.sessions[data['sid']]['users'][c]['active'] = True
                 c += 1
             
-            self.sessions[data['sid']]['expire'] = datetime.datetime.now()+datetime.timedelta(days=14)
+            self.sessions[data['sid']]['expire'] = datetime.datetime.now()+datetime.timedelta(days=int(CONFIG['Sessions']['maintainSession']))
+            self.sessions[data['sid']]['last_update'] = time.time()
 
             return 200, {
                 'code':200,
@@ -1003,7 +1013,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 'name':self.sessions[data['sid']]['name'],
                 'users':usersDict,
                 'session':self.sessions[data['sid']]['instance'].jsonify(),
-                'settings':json.loads(self.sessions[data['sid']]['settings'])
+                'settings':json.dumps(self.sessions[data['sid']]['settings'])
             }
         else:
             return 200, {'code':404}
@@ -1037,9 +1047,9 @@ class RunningInstance: # Currently running instance, maintains stateful presence
 
 
 # main code
-
 logging.config.fileConfig('logging.conf')
-ROOTLOG = logging.getLogger('root')
+ROOTLOG = logging.LoggerAdapter(logging.getLogger('root'),{'location':'ROOT'})
+ROOTLOG.setLevel(LOG_LEVEL)
 ROOTLOG.info('Server started.')
 ROOTLOG.info('Stored latest.log to logs/dump/historical_log_'+time.asctime().replace(' ','_').replace(':','_')+'.log')
 
@@ -1066,7 +1076,7 @@ def check_all():
     while True:
         nse = {}
         for i in instance.sessions.keys():
-            if instance.sessions[i]['expire'] <= datetime.datetime.now()+datetime.timedelta(days=14):
+            if instance.sessions[i]['expire'] <= datetime.datetime.now()+datetime.timedelta(days=int(CONFIG['Sessions']['maintainSession'])):
                 nse[i] = instance.sessions[i]
                 for u in range(len(instance.sessions[i]['users'])):
                     if instance.u_expire[instance.sessions[i]['users'][u]['fingerprint']] < time.time() and instance.sessions[i]['users'][u]['active']:
@@ -1096,6 +1106,7 @@ def log_thread():
             
 
 # Activates PyLink instance and sets commands
+ROOTLOG.info('Running LINK SERVER on '+IP+':'+str(S_PORT)+' and LINK API on '+IP+':'+str(A_PORT))
 LINK = PyLink(
     IP,S_PORT,A_PORT,DIR,server_path=os.path.join('api','pylink','server.py'),
     newsession=instance.new_session,
