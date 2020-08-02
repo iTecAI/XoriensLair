@@ -347,6 +347,9 @@ $(document).ready(function(){
         }
     });
     $('.npc-icon').click(function(event){
+        if (event.delegateTarget.id == 'npc-icon-upload') {
+            $('#npc-icon-file').click();
+        }
         $('.npc-icon').toggleClass('selected',false);
         $(event.delegateTarget).toggleClass('selected',true);
     });
@@ -358,6 +361,8 @@ $(document).ready(function(){
 
         if ($('.npc-icon.selected')[0].getAttribute('name') == 'open5e') {
             icon = $('.npc-icon.selected img')[0].getAttribute('src');
+        } else if ($('.npc-icon.selected')[0].getAttribute('name') == 'upload' && $('#npc-icon-upload').attr('data') != "null") {
+            icon = $('#npc-icon-upload img')[0].getAttribute('src');
         } else {
             icon = $('.npc-icon.selected')[0].getAttribute('name');
         }
@@ -369,6 +374,18 @@ $(document).ready(function(){
             npcData.pos[0],
             npcData.pos[1]
         ],console.log);
+    });
+    $('#npc-icon-file').change(function(){
+        var file = document.getElementById('npc-icon-file').files[0];
+        var reader = new FileReader();
+        reader.addEventListener("load", function () {
+            $('#npc-icon-upload').attr('data',reader.result);
+            $('#npc-icon-upload img').attr('src',reader.result);
+        }, false);
+    
+        if (file) {
+            reader.readAsDataURL(file);
+        }
     });
 
     // Map Buttons
