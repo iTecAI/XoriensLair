@@ -121,7 +121,12 @@ function refresh(data,override) { // Run this routine every .4s
         $('#notify-num').toggleClass('active',newUnread);
 
         // Set settings switches to current values
-        $('#set_roll-logging input').prop('checked',previousData.settings.rollLogging);
+        if (whatIsIt(previousData.settings) == "string") {
+            var settings = JSON.parse(previousData.settings);
+        } else {
+            var settings = previousData.settings;
+        }
+        $('#set_roll-logging input').prop('checked',settings.rollLogging);
 
 
         // Load maps
