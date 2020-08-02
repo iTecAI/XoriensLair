@@ -26,5 +26,6 @@
     "dm_attack":"dm",
     "roll":"pc,dm",
     "send_message":"pc,dm",
-    "read_messages":"pc,dm"
+    "read_messages":"pc,dm",
+    "sys_message":"pc,dm"
 }

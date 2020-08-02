@@ -838,6 +838,13 @@ class Session:
                     self.instance.sessions[self.id]['users'][u]['messages'][m]['read'] = True;
                 break
         return {'code':200}
+    
+    def sys_message(self,fp,args): # [Target (*, dm, or user id), Content]
+        src = 'System'
+        self.logger.debug('Sending message from '+str(src)+' to '+str(args[0]))
+
+        self._send_message(src,args[0],args[1])
+        return {'code':200}
         
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets
     def __init__(self):

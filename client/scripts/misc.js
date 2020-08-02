@@ -516,12 +516,31 @@ $(document).ready(function(){
     for (var d=0;d<Object.keys(diceList).length;d++) {
         $('#'+Object.keys(diceList)[d]+'-btn')
             .attr('dice',diceList[Object.keys(diceList)[d]])
+            .attr('diceType',Object.keys(diceList)[d])
             .click(function(event){
                 var value = getRandom(1,Number($(event.delegateTarget).attr('dice'))).toString();
                 $('#roll-result').text(String(value));
                 $('#dice-display').animate({'height':'45px'},200);
                 clearTimeout(currentDiceHide);
                 currentDiceHide = setTimeout(function(){$('#dice-display').animate({'height':'0px'},200);currentDiceHide=undefined;},5000);
+                if (previousData.users[BrowserFingerprint].type == 'pc') {
+                    scmd(
+                        'sys_message',
+                        [
+                            'dm',
+                            '<span class="bold">ROLL - SIMPLE ROLL:</span><br>User '
+                                +previousData.users[BrowserFingerprint].name
+                                +' rolled a '
+                                +$(event.delegateTarget).attr('diceType')
+                                +' and got '
+                                +String(value)+'.'
+                        ],
+                        function(){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                        }
+                        
+                    );
+                }
             });
     }
 
@@ -549,6 +568,25 @@ $(document).ready(function(){
                             +'.<br><br><span class="bold">Elements: </span><br>'
                             +data.elements.replace(/ \*\*/g,' <span class="bold">').replace(/\(\*\*/g,'(<span class="bold">').replace(/\*\*/g,'</span>')
                         );
+                        if (previousData.users[BrowserFingerprint].type == 'pc') {
+                            scmd(
+                                'sys_message',
+                                [
+                                    'dm',
+                                    '<span class="bold">ROLL - COMPLEX ROLL:</span><br>User '
+                                        +previousData.users[BrowserFingerprint].name
+                                        +' rolled '
+                                        +$('#dice-str-inp').val()
+                                        +' and got '
+                                        +String(data.roll)+'.<br><br><span class="bold">Verbose Roll:</span><br>'
+                                        +data.elements.replace(/ \*\*/g,' <span class="bold">').replace(/\(\*\*/g,'(<span class="bold">').replace(/\*\*/g,'</span>')
+                                ],
+                                function(){
+                                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                                }
+                                
+                            );
+                        }
                     } else {
                         bootbox.alert('<span class="bold">Error: </span><br>There was an error in your roll ('+$('#dice-str-inp').val()+'):<br><br>'+data.reason);
                     }
