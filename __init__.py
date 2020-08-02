@@ -797,10 +797,48 @@ class Session:
         except d20.errors.RollSyntaxError as e:
             self.logger.exception('Dice error: ')
             return {'code':400,'reason':'Dice error: '+str(e)}
-                                
-
+    
+    def _send_message(self,source,target,content): # send_message backend for programmatic use
+        if target == '*':
+            targets = [i['fingerprint'] for i in self.instance.sessions[self.id]['users']]
+        elif target == 'dm':
+            targets = [i['fingerprint'] for i in self.instance.sessions[self.id]['users'] if i['type'] == 'dm']
+        else:
+            targets = [target]
         
+        for t in targets:
+            try:
+                for u in range(len(self.instance.sessions[self.id]['users'])):
+                    if self.instance.sessions[self.id]['users'][u]['fingerprint'] == t:
+                        self.instance.sessions[self.id]['users'][u]['messages'].append({
+                            'source':source,
+                            'content':content,
+                            'read':False,
+                            'timestamp':time.time()
+                        })
+            except KeyError:
+                self.logger.exception('Failed to send message to USER '+str(t)+' with following exception information:')
 
+    
+    def send_message(self,fp,args): # [Target (*, dm, or user id), Content]
+        src = fp
+        for u in self.instance.sessions[self.id]['users']:
+            if u['fingerprint'] == fp:
+                src = u['name']
+                break
+        self.logger.debug('Sending message from '+str(src)+' to '+str(args[0]))
+
+        self._send_message(src,args[0],args[1])
+        return {'code':200}
+    
+    def read_messages(self,fp,args): # []
+        for u in range(len(self.instance.sessions[self.id]['users'])):
+            if self.instance.sessions[self.id]['users'][u]['fingerprint'] == fp:
+                for m in range(len(self.instance.sessions[self.id]['users'][u]['messages'])):
+                    self.instance.sessions[self.id]['users'][u]['messages'][m]['read'] = True;
+                break
+        return {'code':200}
+        
 class RunningInstance: # Currently running instance, maintains stateful presence between page resets
     def __init__(self):
         # Sets up the API instance
@@ -833,7 +871,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                         'name':'Dungeon Master',
                         'fingerprint':data['fingerprint'],
                         'type':'dm',
-                        'active':True
+                        'active':True,
+                        'messages':[]
                     }
                 ]
             }
@@ -850,7 +889,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                         'name':'Dungeon Master',
                         'fingerprint':data['fingerprint'],
                         'type':'dm',
-                        'active':True
+                        'active':True,
+                        'messages':[]
                     }
                 ]
             }
@@ -869,7 +909,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                     'name':data['name'],
                     'fingerprint':data['fingerprint'],
                     'type':'pc',
-                    'active':True
+                    'active':True,
+                    'messages':[]
                 })
                 self.u_expire[data['fingerprint']] = time.time()+30
                 code, r = self.check_user({'fingerprint':data['fingerprint']})

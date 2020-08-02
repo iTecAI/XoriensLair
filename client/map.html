@@ -51,6 +51,7 @@
             var cursor = 'default'; // Cursor type
             var currentInitTarget = null;
             var sidebarActivating = false;
+            var messageActivating = false;
             var currentDiceHide = undefined;
             var obscureInfo = {
                 obscuring:false,
@@ -172,6 +173,15 @@
                     }
                 }
                 return null;
+            }
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
             }
 
             function getRandom(min,max) {
@@ -433,6 +443,25 @@
                         $('.dm-only').hide();
                     }
 
+                    // Load messages
+                    $('#message-box').html('');
+                    var newUnread = false;
+                    for (var msg=0;msg<previousData.users[BrowserFingerprint]['messages'].length;msg++) {
+                        $(
+                            '<div class="message"><div class=\'message-author bold\'>'
+                            +previousData.users[BrowserFingerprint]['messages'][msg]['source']
+                            +'</div><div class=\'message-content\'>'
+                            +previousData.users[BrowserFingerprint]['messages'][msg]['content']
+                            +'</div></div>'
+                        ).appendTo($('#message-box'));
+                        if (!previousData.users[BrowserFingerprint]['messages'][msg]['read'] && !$('#message-window').hasClass('active')) {
+                            newUnread = true;
+                        }
+                    }
+                    $('#notify-num').toggleClass('active',newUnread);
+
+
+                    // Load maps
                     var mapArea = document.getElementById('maps-area');
                     mapArea.innerHTML = '';
                     var displayArea = document.getElementById('display-area');
@@ -1130,6 +1159,9 @@
                     }
                     if ($(event.target).parents('#initiative-sidebar').length == 0 && $(event.target).attr('id')!='initiative-sidebar' && !sidebarActivating) {
                         $('#initiative-sidebar').toggleClass('active',false);
+                    }
+                    if ($(event.target).parents('#message-window').length == 0 && $(event.target).attr('id')!='message-window' && !messageActivating) {
+                        $('#message-window').toggleClass('active',false);
                     }
                     
                 });
@@ -2125,10 +2157,45 @@
                         );
                     }
                 });
+                $('#send-msg').click(function(event){
+                    if ($('#new-msg-inp').val().length > 0) {
+                        scmd(
+                            'send_message',
+                            ['*',escapeHtml($('#new-msg-inp').val())],
+                            function(data){
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                                $('#new-msg-inp').val('');
+                            }
+                        );
+                    }
+                });
+                $('#new-msg-inp').change(function(event){
+                    if ($('#new-msg-inp').val().length > 0) {
+                        scmd(
+                            'send_message',
+                            ['*',escapeHtml($('#new-msg-inp').val())],
+                            function(data){
+                                command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                                $('#new-msg-inp').val('');
+                            }
+                        );
+                    }
+                });
+                $('#toggle-chat-btn').click(function(event){
+                    scmd(
+                        'read_messages',
+                        [0],
+                        function(data){
+                            command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+                        }
+                    );
+                    messageActivating = true;
+                    setTimeout(function(){
+                        messageActivating = false;
+                    },0.5);
+                    $('#message-window').toggleClass('active');
+                });
             });
-
-
-            
         </script>
 
         <link rel="stylesheet" type="text/css" href="style/common.css">
@@ -2175,6 +2242,19 @@
             <h3 id='session-name'>Session Name: NULL</h3>
             <h3>Share Link</h3>
             <div id='share-link' data-tooltip='Click to Copy' data-tooltip-location="bottom">NULL</div>
+            <button id='toggle-chat-btn' data-tooltip="Messages" data-tooltip-location="right">
+                <img src="assets/chaticon.png">
+                <div id='notify-num'></div>
+            </button>
+        </div>
+        <div id='message-window'>
+            <div id='message-box'>
+                
+            </div>
+            <div id='message-widget'>
+                <input id='new-msg-inp' placeholder="Message" autocomplete="off">
+                <button id='send-msg'><img src='assets/send.png'></button>
+            </div>
         </div>
         <div id='users-bar'>
             <div id='user-area'></div>

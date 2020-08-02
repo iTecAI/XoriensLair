@@ -24,5 +24,7 @@
     "reload_homebrew":"dm",
     "pc_attack":"pc",
     "dm_attack":"dm",
-    "roll":"pc,dm"
+    "roll":"pc,dm",
+    "send_message":"pc,dm",
+    "read_messages":"pc,dm"
 }
