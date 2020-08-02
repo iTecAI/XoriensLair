@@ -128,6 +128,25 @@ function refresh(data,override) { // Run this routine every .4s
         }
         $('#set_roll-logging input').prop('checked',settings.rollLogging);
 
+        // Populate help pages
+        $('#help-sections').html('');
+        var helpPages = JSON.parse(previousData.help_pages);
+        for (var s=0;s<Object.keys(helpPages).length;s++) {
+            var helpSectionEl = $('<div class="help-section" id="section-'+Object.keys(helpPages)[s]+'"><div class="section-title">'+Object.keys(helpPages)[s]+'</div></div>');
+            var section = helpPages[Object.keys(helpPages)[s]];
+            for (var p=0;p<Object.keys(section).length;p++) {
+                var buttonTitle = Object.keys(section)[p];
+                buttonTitle = buttonTitle.replace(buttonTitle.charAt(0),buttonTitle.charAt(0).toUpperCase());
+                $(helpSectionEl).append(
+                    $('<button class="help-page-btn" id="page-btn-'+Object.keys(section)[p]+'" name="'+section[Object.keys(section)[p]]+'">'+buttonTitle+'</button>')
+                    .click(function(event){
+                        $('#help-display').attr('src','docs_html/'+$(event.delegateTarget).attr('name'));
+                        $('#help-title').text($(event.delegateTarget).text());
+                    })
+                );
+            }
+            $('#help-sections').append(helpSectionEl);
+        }
 
         // Load maps
         var mapArea = document.getElementById('maps-area');

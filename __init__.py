@@ -25,6 +25,10 @@ CONFIG = ConfigParser()
 with open(os.path.join('config','server.conf'),'r') as cfg:
     CONFIG.read_file(cfg)
 
+HELP_CONFIG = ConfigParser()
+with open(os.path.join('config','help_pages.conf'),'r') as cfg:
+    HELP_CONFIG.read_file(cfg)
+
 
 # options
 IP = CONFIG['Runtime']['hostIP']
@@ -215,7 +219,8 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 'name':self.sessions[data['sid']]['name'],
                 'users':usersDict,
                 'session':self.sessions[data['sid']]['instance'].jsonify(),
-                'settings':json.dumps(self.sessions[data['sid']]['settings'])
+                'settings':json.dumps(self.sessions[data['sid']]['settings']),
+                'help_pages':json.dumps({s:dict(HELP_CONFIG.items(s)) for s in HELP_CONFIG.sections()})
             }
         else:
             return 200, {'code':404}
@@ -273,8 +278,39 @@ else:
     ROOTLOG.info('No state.stor file found. Running clean instance.')
     instance = RunningInstance()
 
+def load_docs():
+    if (os.path.exists(os.path.join('client','docs_md'))):
+        if os.path.exists(os.path.join('client','docs_html')):
+            shutil.rmtree(os.path.join('client','docs_html'))
+        os.mkdir(os.path.join('client','docs_html'))
+        for doc in os.listdir(os.path.join('client','docs_md')):
+            with open(os.path.join('client','docs_md',doc),'r') as old_f:
+                with open(os.path.join('client','docs_html',doc.split('.')[0]+'.html'),'w') as new_f:
+                    new_file = markdown2.markdown(old_f.read(),extras=[
+                            'break-on-newline',
+                            'fenced-code-blocks',
+                            'cuddled-lists',
+                            'header-ids',
+                            'numbering',
+                            'spoiler',
+                            'strike',
+                            'tables'
+                        ])
+
+                    fullstr = ''.join([
+                        '<head>\n',
+                        '\t<title>Documentation - '+doc.split('.')[0]+'</title>\n',
+                        '\t<link rel="stylesheet" type="text/css" href="../style/docs.css">\n',
+                        '</head>\n',
+                        '<body>\n\t',
+                        '\n\t'.join(str(new_file).split('\n'))+'\n',
+                        '</body>'
+                    ])
+                    new_f.write(fullstr)
+
 def check_all():
-    global instance, ROOTLOG
+    global instance, ROOTLOG, HELP_CONFIG
+    last_help_update = 0
     while True:
         nse = {}
         for i in instance.sessions.keys():
@@ -304,6 +340,14 @@ def check_all():
             else:
                 new_cached[c] = instance.cached[c]
         instance.cached = new_cached
+
+        if last_help_update + 5 < time.time():
+            load_docs()
+            nHELP_CONFIG = ConfigParser()
+            with open(os.path.join('config','help_pages.conf'),'r') as cfg:
+                nHELP_CONFIG.read_file(cfg)
+            HELP_CONFIG = nHELP_CONFIG
+            last_help_update = time.time()
                 
 
         with open('state.stor','wb') as store:
@@ -326,35 +370,6 @@ def log_thread():
         time.sleep(10)
 
 # Load docs from markdown
-if (os.path.exists(os.path.join('client','docs_md'))):
-    ROOTLOG.info('Loading docs from docs_md')
-    if os.path.exists(os.path.join('client','docs_html')):
-        shutil.rmtree(os.path.join('client','docs_html'))
-    os.mkdir(os.path.join('client','docs_html'))
-    for doc in os.listdir(os.path.join('client','docs_md')):
-        with open(os.path.join('client','docs_md',doc),'r') as old_f:
-            with open(os.path.join('client','docs_html',doc.split('.')[0]+'.html'),'w') as new_f:
-                new_file = markdown2.markdown(old_f.read(),extras=[
-                        'break-on-newline',
-                        'fenced-code-blocks',
-                        'cuddled-lists',
-                        'header-ids',
-                        'numbering',
-                        'spoiler',
-                        'strike',
-                        'tables'
-                    ])
-
-                fullstr = ''.join([
-                    '<head>\n',
-                    '\t<title>Documentation - '+doc.split('.')[0]+'</title>\n',
-                    '\t<link rel="stylesheet" type="text/css" href="../style/docs.css">\n',
-                    '</head>\n',
-                    '<body>\n\t',
-                    '\n\t'.join(str(new_file).split('\n'))+'\n',
-                    '</body>'
-                ])
-                new_f.write(fullstr)
             
 
 # Activates PyLink instance and sets commands

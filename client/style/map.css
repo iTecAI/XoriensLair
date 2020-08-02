@@ -1125,3 +1125,117 @@ tr {
     margin: 0px;
 }
 
+#help-panel {
+    width: 80vw;
+    height: 86vh;
+    position: absolute;
+    top: 7vh;
+    left: 10vw;
+    background-color: rgb(63, 58, 77);
+    border-radius: 10px;
+    z-index: 20001;
+    padding: 0px;
+    display: none;
+}
+
+#help-panel.active {
+    display: inline-block;
+}
+
+#help-menu {
+    width: 15%;
+    height: 100%;
+    margin: 0px;
+    border-radius: 10px 0px 0px 10px;
+    background-color: rgb(45, 41, 54);
+}
+
+#help-top {
+    width: 100%;
+    margin: 0px;
+    height: 10%;
+    background-color: rgb(28, 26, 34);
+    border-top-left-radius: 10px;
+    color: rgb(239, 243, 251);
+    font-size: calc(80vw * 0.15 * 0.12);
+    text-align: center;
+    padding-top: 9%;
+}
+
+#help-sections {
+    position: absolute;
+    width: 15%;
+    height: 90%;
+    left: 0px;
+    bottom: 0px;
+    border-bottom-left-radius: 10px;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    background-color: rgb(45, 41, 54);
+}
+
+#help-sections::-webkit-scrollbar {
+    width: 8px;
+    background-color: rgb(32, 29, 39);
+}
+#help-sections::-webkit-scrollbar-track {
+    background-color: rgb(32, 29, 39); 
+}
+#help-sections::-webkit-scrollbar-thumb {
+    background-color: rgb(27, 25, 32);
+    transition: background-color 0.2s ;
+}
+#help-sections::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(16, 14, 19); 
+}
+
+#help-title {
+    width: 85%;
+    height: 10%;
+    border-top-right-radius: 10px;
+    background-color: rgb(45, 41, 54);
+    position: absolute;
+    right: 0px;
+    top: 0px;
+}
+
+#help-display {
+    width: 85%;
+    height: 90%;
+    position: absolute;
+    bottom: 0px;
+    right: 0px;
+    border: none;
+    border-bottom-right-radius: 10px;
+}
+
+.section-title {
+    width: 100%;
+    height: 5vh;
+    color: rgb(239, 243, 251);
+    font-family: roboto-bold;
+    text-align: center;
+    padding-top: 1vh;
+    background-color: rgb(37, 34, 44);
+}
+
+.help-page-btn {
+    width: 100%;
+    height: 5vh;
+    border: none;
+    background-color: rgb(45, 41, 54);
+    transition: background-color 0.2s;
+    color: rgb(239, 243, 251);
+    font-family: roboto;
+}
+.help-page-btn:hover {
+    background-color: rgb(37, 34, 44);
+}
+
+#help-title {
+    text-align: center;
+    font-size: 3vh;
+    color: rgb(239, 243, 251);
+    font-family: roboto;
+    padding-top: calc(86vh * 0.1 * 0.2);
+}

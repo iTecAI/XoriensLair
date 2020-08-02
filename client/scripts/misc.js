@@ -641,6 +641,11 @@ $(document).ready(function(){
         },0.5);
         $('#message-window').toggleClass('active');
     });
+    $('#toggle-help-btn').click(function(event){
+        command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
+        $('#help-panel').toggleClass('active',true);
+        $('#modal-back').toggleClass('active',true);
+    });
 
 
     // Fit text areas

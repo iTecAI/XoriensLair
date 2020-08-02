@@ -134,6 +134,7 @@ avrae-google.json
 # vsc
 settings.json
 .vscode/*
+jsconfig.json
 
 # Stateful management
 *.stor
