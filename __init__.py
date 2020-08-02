@@ -294,7 +294,8 @@ def load_docs():
                             'numbering',
                             'spoiler',
                             'strike',
-                            'tables'
+                            'tables',
+                            'target-blank-links'
                         ])
 
                     fullstr = ''.join([

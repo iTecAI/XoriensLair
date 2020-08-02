@@ -35,9 +35,27 @@ html {
 body {
     padding: 20px;
     background-color: rgb(63, 58, 77);
+    font-family: roboto;
+    color: rgb(235, 235, 235);
 }
 
 h1, h2, h3, h4, h5 {
     font-family: roboto-bold;
     color: rgb(235, 235, 235);
+}
+
+pre {
+    padding: 10px;
+    background-color: rgb(53, 49, 65);
+    border-radius: 5px;
+    border: 1px solid rgb(42, 39, 51);
+    box-shadow: inset 0px 0px 6px 0px rgba(0,0,0,0.75);
+}
+
+a {
+    color: rgb(29, 226, 226);
+}
+
+a:visited {
+    color: rgb(26, 207, 207);
 }

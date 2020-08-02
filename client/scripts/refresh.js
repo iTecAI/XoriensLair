@@ -147,6 +147,10 @@ function refresh(data,override) { // Run this routine every .4s
             }
             $('#help-sections').append(helpSectionEl);
         }
+        document.getElementById('help-display').location.reload();
+        var src = $('#help-display').attr('src')
+        $('#help-display').attr('src','');
+        $('#help-display').attr('src',src);
 
         // Load maps
         var mapArea = document.getElementById('maps-area');
