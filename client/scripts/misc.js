@@ -641,4 +641,8 @@ $(document).ready(function(){
         },0.5);
         $('#message-window').toggleClass('active');
     });
+
+
+    // Fit text areas
+    //$('#top-text h3').fitText(1);
 });

@@ -2,7 +2,7 @@
 
 [data-tooltip] {
   position: relative;
-  z-index: 10;
+  z-index: 10000;
 }
 
 /* Positioning and visibility settings of the tooltip */
@@ -16,6 +16,7 @@
   pointer-events: none;
   transition: 0.2s;
   will-change: transform;
+  z-index: 10000;
 }
 
 /* The actual tooltip with a dynamic width */
@@ -39,6 +40,7 @@
   text-align: center;
   white-space: pre-wrap;
   transform: translate(-50%, -5px) scale(0.5);
+  z-index: 10000;
 }
 
 /* Tooltip arrow */

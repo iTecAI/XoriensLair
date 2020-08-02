@@ -12,3 +12,5 @@ bson
 gspread
 d20
 yarl==1.4.2
+markdown2
+bs4

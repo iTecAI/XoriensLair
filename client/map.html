@@ -14,6 +14,7 @@
         <script src="scripts/refresh.js"></script>
         <script src="scripts/ctx.js"></script>
         <script src="scripts/misc.js"></script>
+        <script src="pack/fit.js"></script>
         <script
             src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"
             integrity="sha256-VazP97ZCwtekAsvgPBSUwPFKdrwD3unUfSGVYrahUqU="
@@ -60,12 +61,14 @@
         </div>
 
         <div id='top-bar'>
-            <h3 id='session-name'>Session Name: NULL</h3>
-            <h3>Share Link</h3>
+            <h3><span id='session-name'>Session Name: NULL</span><span id='share-link-txt'>Share Link</span></h3>
             <div id='share-link' data-tooltip='Click to Copy' data-tooltip-location="bottom">NULL</div>
             <button id='toggle-chat-btn' data-tooltip="Messages" data-tooltip-location="right">
                 <img src="assets/chaticon.png">
                 <div id='notify-num'></div>
+            </button>
+            <button id='toggle-help-btn' data-tooltip="Help" data-tooltip-location="right">
+                <img src="assets/help.png">
             </button>
         </div>
         <div id='message-window'>
@@ -137,6 +140,7 @@
             <p>End Initiative Icon: <a href="https://www.flaticon.com/free-icon/no-stopping_803294" title="Those Icons">Those Icons</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></p>
             <p>Refresh Icon: <a href="http://www.freepik.com/" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
             <p>CritterDB Icon: <a href="https://github.com/haswellr/CritterDB/blob/master/server/public/img/icons/ghost.svg">ghost.svg</a></p>
+            <p>Help Icon: <a href="https://www.flaticon.com/authors/bqlqn" title="bqlqn">bqlqn</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a></p>
         </div>
 
         <!-- Dialogs -->

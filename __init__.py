@@ -18,6 +18,8 @@ from urllib.parse import urlparse
 import d20
 from configparser import ConfigParser
 from session import *
+import markdown2
+from bs4 import BeautifulSoup
 
 CONFIG = ConfigParser()
 with open(os.path.join('config','server.conf'),'r') as cfg:
@@ -322,6 +324,37 @@ def log_thread():
             with open(os.path.join('logs','latest.log'),'w') as f:
                 f.write('')
         time.sleep(10)
+
+# Load docs from markdown
+if (os.path.exists(os.path.join('client','docs_md'))):
+    ROOTLOG.info('Loading docs from docs_md')
+    if os.path.exists(os.path.join('client','docs_html')):
+        shutil.rmtree(os.path.join('client','docs_html'))
+    os.mkdir(os.path.join('client','docs_html'))
+    for doc in os.listdir(os.path.join('client','docs_md')):
+        with open(os.path.join('client','docs_md',doc),'r') as old_f:
+            with open(os.path.join('client','docs_html',doc.split('.')[0]+'.html'),'w') as new_f:
+                new_file = markdown2.markdown(old_f.read(),extras=[
+                        'break-on-newline',
+                        'fenced-code-blocks',
+                        'cuddled-lists',
+                        'header-ids',
+                        'numbering',
+                        'spoiler',
+                        'strike',
+                        'tables'
+                    ])
+
+                fullstr = ''.join([
+                    '<head>\n',
+                    '\t<title>Documentation - '+doc.split('.')[0]+'</title>\n',
+                    '\t<link rel="stylesheet" type="text/css" href="../style/docs.css">\n',
+                    '</head>\n',
+                    '<body>\n\t',
+                    '\n\t'.join(str(new_file).split('\n'))+'\n',
+                    '</body>'
+                ])
+                new_f.write(fullstr)
             
 
 # Activates PyLink instance and sets commands

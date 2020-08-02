@@ -137,9 +137,11 @@ settings.json
 
 # Stateful management
 *.stor
+*.cache
 
 # Other things
 bestiary.json
 local/*
 saves/*
 _line_count.py
+client/docs_html/*.html
