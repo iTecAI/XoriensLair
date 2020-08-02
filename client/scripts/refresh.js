@@ -130,9 +130,9 @@ function refresh(data,override) { // Run this routine every .4s
             var el = document.createElement('img');
             el.src = previousData.session.maps[m].image;
             el.title = 'Dimensions: '.concat(
-                previousData.session.maps[m].grid_data.rows.toString(),
-                ' x ',
                 previousData.session.maps[m].grid_data.columns.toString(),
+                ' x ',
+                previousData.session.maps[m].grid_data.rows.toString(),
                 ' | Grid Size: ',
                 previousData.session.maps[m].grid_data.size.toString(),
                 ' ft.'
