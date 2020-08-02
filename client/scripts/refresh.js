@@ -545,7 +545,6 @@ function refresh(data,override) { // Run this routine every .4s
                         'cursor':cursor,
                         'position':'absolute'
                     });
-                    refresh();
 
 
                 });
