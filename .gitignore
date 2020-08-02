@@ -133,9 +133,12 @@ avrae-google.json
 
 # vsc
 settings.json
+.vscode/*
 
 # Stateful management
 *.stor
 
 # Other things
 bestiary.json
+local/*
+saves/*
