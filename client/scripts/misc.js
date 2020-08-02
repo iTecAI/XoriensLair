@@ -627,18 +627,6 @@ $(document).ready(function(){
             );
         }
     });
-    $('#new-msg-inp').change(function(event){
-        if ($('#new-msg-inp').val().length > 0) {
-            scmd(
-                'send_message',
-                ['*',escapeHtml($('#new-msg-inp').val())],
-                function(data){
-                    command('gsi',{'sid':params.get('id'),'print':BrowserFingerprint},API_PORT,refresh);
-                    $('#new-msg-inp').val('');
-                }
-            );
-        }
-    });
     $('#toggle-chat-btn').click(function(event){
         scmd(
             'read_messages',

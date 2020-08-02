@@ -998,6 +998,12 @@ class RunningInstance: # Currently running instance, maintains stateful presence
             usersDict = {}
             c = 0
             for i in self.sessions[data['sid']]['users']:
+                nmsgs = []
+                for m in range(len(self.sessions[data['sid']]['users'][c]['messages'])):
+                    if self.sessions[data['sid']]['users'][c]['messages'][m]['timestamp']+int(CONFIG['Misc']['messageTimeout']) > time.time():
+                        nmsgs.append(self.sessions[data['sid']]['users'][c]['messages'][m])
+                self.sessions[data['sid']]['users'][c]['messages'] = nmsgs
+
                 usersDict[i['fingerprint']] = i
                 if self.sessions[data['sid']]['users'][c]['fingerprint'] == data['print']:
                     self.u_expire[data['print']] = time.time()+int(CONFIG['Users']['userTimeout'])
