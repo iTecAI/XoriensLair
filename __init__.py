@@ -881,7 +881,10 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                         'active':True,
                         'messages':[]
                     }
-                ]
+                ],
+                'settings':{
+                    'rollLogging':True
+                }
             }
             self.u_expire[data['fingerprint']] = time.time()+30
         else:
@@ -899,7 +902,10 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                         'active':True,
                         'messages':[]
                     }
-                ]
+                ],
+                'settings':{
+                    'rollLogging':True
+                }
             }
             self.u_expire[data['fingerprint']] = time.time()+30
         code, r = self.check_user({'fingerprint':data['fingerprint']})
@@ -996,12 +1002,13 @@ class RunningInstance: # Currently running instance, maintains stateful presence
                 'hasPassword':bool(self.sessions[data['sid']]['password']),
                 'name':self.sessions[data['sid']]['name'],
                 'users':usersDict,
-                'session':self.sessions[data['sid']]['instance'].jsonify()
+                'session':self.sessions[data['sid']]['instance'].jsonify(),
+                'settings':json.loads(self.sessions[data['sid']]['settings'])
             }
         else:
             return 200, {'code':404}
     
-    def modify_session(self,data): # sid, fingerprint, newname, newpass
+    def modify_session(self,data): # sid, fingerprint, newname, newpass, settings
         self.logger.debug('User '+data['fingerprint']+' is modifying session '+data['sid'])
         # Modify session information
         if not 'newpass' in data.keys():
@@ -1010,6 +1017,7 @@ class RunningInstance: # Currently running instance, maintains stateful presence
         if dat['sid'] == data['sid'] and dat['type'] == 'dm':
             self.sessions[data['sid']]['name'] = data['newname']
             self.sessions[data['sid']]['password'] = data['newpass']
+            self.sessions[data['sid']]['settings'] = data['settings']
             return 200, {'code':200}
         else:
             self.logger.warning('User '+data['fingerprint']+' failed to modify session '+data['sid']+' - No access.')

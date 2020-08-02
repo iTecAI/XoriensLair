@@ -130,7 +130,10 @@ $(document).ready(function(){
             'sid':params.get('id'),
             'fingerprint':BrowserFingerprint,
             'newname':$('#session-name-set').val(),
-            'newpass':$('#session-psw-set').val()
+            'newpass':$('#session-psw-set').val(),
+            'settings':JSON.stringify({
+                'rollLogging':$('#set_roll-logging input').prop('checked')
+            })
         },API_PORT,function(data){
             if (data.code != 200) {
                 bootbox.alert(data.reason);
@@ -540,7 +543,7 @@ $(document).ready(function(){
                 $('#dice-display').animate({'height':'45px'},200);
                 clearTimeout(currentDiceHide);
                 currentDiceHide = setTimeout(function(){$('#dice-display').animate({'height':'0px'},200);currentDiceHide=undefined;},5000);
-                if (previousData.users[BrowserFingerprint].type == 'pc') {
+                if (previousData.users[BrowserFingerprint].type == 'pc' && previousData.settings.rollLogging) {
                     scmd(
                         'sys_message',
                         [
@@ -585,7 +588,7 @@ $(document).ready(function(){
                             +'.<br><br><span class="bold">Elements: </span><br>'
                             +data.elements.replace(/ \*\*/g,' <span class="bold">').replace(/\(\*\*/g,'(<span class="bold">').replace(/\*\*/g,'</span>')
                         );
-                        if (previousData.users[BrowserFingerprint].type == 'pc') {
+                        if (previousData.users[BrowserFingerprint].type == 'pc' && previousData.settings.rollLogging) {
                             scmd(
                                 'sys_message',
                                 [

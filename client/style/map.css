@@ -1066,3 +1066,15 @@ tr {
     background-color: rgb(50, 45, 59);
 }
 
+#settings-switches {
+    color: rgb(240,240,240);
+    font-size: 24px;
+}
+
+#settings-switches span.bold {
+    height: 34px;
+    padding-bottom: 20px;
+    padding-left: 10px;
+    margin-right: 10px;
+}
+

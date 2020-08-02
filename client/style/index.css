@@ -99,3 +99,7 @@ h3 {
 #rj-no-button:hover {
     background-color: rgb(170, 21, 21);
 }
+
+.dialog {
+    width: 50vw;
+}

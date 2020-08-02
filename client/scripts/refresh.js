@@ -120,6 +120,9 @@ function refresh(data,override) { // Run this routine every .4s
         }
         $('#notify-num').toggleClass('active',newUnread);
 
+        // Set settings switches to current values
+        $('#set_roll-logging input').prop('checked',previousData.settings.rollLogging);
+
 
         // Load maps
         var mapArea = document.getElementById('maps-area');
