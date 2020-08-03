@@ -1,4 +1,3 @@
-// API PORT - IMPORTANT
 var API_PORT = 1023;
 
 // Base command function
