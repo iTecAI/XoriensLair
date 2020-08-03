@@ -1,3 +1,6 @@
+// API PORT - IMPORTANT
+var API_PORT = 1023;
+
 // Base command function
 
 function command(command, data, port, callback) {
@@ -40,7 +43,6 @@ function scmd(cmd,args,callback) {
 
 
 // Constants
-var API_PORT = 1023;
 
 if (getCookie('uid') == '') {
     setCookie('uid',sha256(Math.random().toString()),14);
