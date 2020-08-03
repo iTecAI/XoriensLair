@@ -130,6 +130,7 @@ dmypy.json
 
 # Creds
 avrae-google.json
+*.zip
 
 # vsc
 settings.json

@@ -1,4 +1,4 @@
-import json, os, shutil
+import json, os, zipfile, shutil
 from css_html_js_minify import html_minify, js_minify, css_minify
 
 def json_minify(f,**kwargs):
@@ -75,3 +75,9 @@ for path in config['paths']:
                                 f.write(eval(spext[1].strip('.')+'_minify(data)',globals(),{'data':ofd.read()}))
                             else:
                                 f.write(ofd.read())
+
+zipf = zipfile.ZipFile(config['target']+'.zip', 'w', zipfile.ZIP_DEFLATED)
+zipdir(config['target'], zipf)
+zipf.close()
+
+shutil.rmtree(config['target'])
