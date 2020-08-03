@@ -57,7 +57,7 @@ $(document).ready(function(){ // Setup
             'id':$('#sid-input').val(),
             'password':$('#psw-input').val(),
             'fingerprint':BrowserFingerprint
-        },1023,function(data){
+        },API_PORT,function(data){
             window.location = 'map.html?id='+data['sid'];
         });
     });
@@ -90,7 +90,7 @@ $(document).ready(function(){ // Setup
                     'password':$('#psw-new').val(),
                     'fingerprint':BrowserFingerprint,
                     'session':event.target.result
-                },1023,function(data){
+                },API_PORT,function(data){
                     console.log(data['sid']);
                     window.location = 'map.html?id='+data['sid'];
                 });
@@ -104,7 +104,7 @@ $(document).ready(function(){ // Setup
                 'id': crc32((Date.now()*Math.random()).toString()),
                 'password':$('#psw-new').val(),
                 'fingerprint':BrowserFingerprint
-            },1023,function(data){
+            },API_PORT,function(data){
                 console.log(data['sid']);
                 window.location = 'map.html?id='+data['sid'];
             });
@@ -112,7 +112,7 @@ $(document).ready(function(){ // Setup
     });
 
     $('#rj-yes-button').click(function(){ // Join session button
-        command('checkuser',{'fingerprint':BrowserFingerprint},1023,function(data){
+        command('checkuser',{'fingerprint':BrowserFingerprint},API_PORT,function(data){
             if (data['found']) {
                 window.location = 'map.html?id='+data['sid'];
             }
@@ -125,7 +125,7 @@ $(document).ready(function(){ // Setup
         $('#modal-back').toggleClass('active',true);
     });
 
-    command('checkuser',{'fingerprint':BrowserFingerprint},1023,function(data){
+    command('checkuser',{'fingerprint':BrowserFingerprint},API_PORT,function(data){
         if (data.found) {
             $('#modal-back').toggleClass('active',true);
             $('#rejoin-dialog').toggleClass('active',true);
