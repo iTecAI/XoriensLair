@@ -178,6 +178,20 @@ class RunningInstance: # Currently running instance, maintains stateful presence
     def session_cmd(self,data): # sid, fingerprint, command, args
         if not (data['command'] == 'initiative' and 'check' in data['args'].split('|')):
             self.logger.debug('User '+data['fingerprint']+' sending command '+data['command']+' to session '+data['sid']+' with '+str(len(data['args'].split('|')))+' arguments.')
+        new_cached = {}
+        for k in self.cached.keys():
+            if data['fingerprint'] in self.cached[k]['userIds']:
+                if os.path.exists('cache'):
+                    if os.path.exists(os.path.join('cache','session_'+str(k)+'.cache')):
+                        with open(os.path.join('cache','session_'+str(k)+'.cache'),'rb') as cache:
+                            self.sessions[k] = pickle.load(cache)
+                            self.logger.debug('Loaded session '+k+' from cache')
+                        os.remove(os.path.join('cache','session_'+str(k)+'.cache'))
+                else:
+                    self.logger.error('Cache folder deleted. Clearing cache registry.')
+                    self.cached = {}
+            else:
+                new_cached[k] = self.cached[k]
         # Acts as an intermediary handler between the RunningInstance and the session specific to the user, and handles permissions.
         code, dat = self.check_user({'fingerprint':data['fingerprint']})
         if dat['sid'] == data['sid']:
@@ -283,6 +297,7 @@ if os.path.exists('state.stor'):
         if hasattr(instance,'_check'):
             if instance._check:
                 ROOTLOG.info('Loaded and checked saved instance.')
+
             else:
                 ROOTLOG.info('Instance check failed, running clean instance.')
                 instance = RunningInstance()
@@ -292,6 +307,20 @@ if os.path.exists('state.stor'):
 else:
     ROOTLOG.info('No state.stor file found. Running clean instance.')
     instance = RunningInstance()
+
+for cache in instance.cached.keys():
+    try:
+        with open(os.path.join('cache','session_'+str(cache)+'.cache'),'rb') as f:
+            _load = pickle.load(f)
+            _load['last_update'] = time.time()
+            instance.sessions[cache] = _load
+    except FileNotFoundError:
+        pass
+instance.cached = {}
+try:
+    shutil.rmtree('cache')
+except FileNotFoundError:
+    pass
 
 def load_docs():
     if (os.path.exists(os.path.join('client','docs_md'))):
