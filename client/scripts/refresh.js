@@ -136,7 +136,7 @@ function refresh(data,override) { // Run this routine every .4s
             var section = helpPages[Object.keys(helpPages)[s]];
             for (var p=0;p<Object.keys(section).length;p++) {
                 var buttonTitle = Object.keys(section)[p];
-                buttonTitle = buttonTitle.replace(buttonTitle.charAt(0),buttonTitle.charAt(0).toUpperCase());
+
                 $(helpSectionEl).append(
                     $('<button class="help-page-btn" id="page-btn-'+Object.keys(section)[p]+'" name="'+section[Object.keys(section)[p]]+'">'+buttonTitle+'</button>')
                     .click(function(event){
@@ -147,10 +147,6 @@ function refresh(data,override) { // Run this routine every .4s
             }
             $('#help-sections').append(helpSectionEl);
         }
-        document.getElementById('help-display').location.reload();
-        var src = $('#help-display').attr('src')
-        $('#help-display').attr('src','');
-        $('#help-display').attr('src',src);
 
         // Load maps
         var mapArea = document.getElementById('maps-area');

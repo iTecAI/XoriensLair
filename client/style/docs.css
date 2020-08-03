@@ -59,3 +59,24 @@ a {
 a:visited {
     color: rgb(26, 207, 207);
 }
+
+body::-webkit-scrollbar {
+    width: 8px;
+    background-color: rgb(49, 44, 59);
+}
+body::-webkit-scrollbar-track {
+    background-color: rgb(49, 44, 59);
+}
+body::-webkit-scrollbar-thumb {
+    background-color: rgb(27, 25, 32);
+    transition: background-color 0.2s ;
+}
+body::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(16, 14, 19); 
+}
+
+img {
+    width: 95vw;
+    height: auto;
+    display: inline-block;
+}

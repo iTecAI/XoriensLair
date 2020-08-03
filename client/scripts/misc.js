@@ -509,6 +509,24 @@ $(document).ready(function(){
             }
         );
     });
+    $('#next-arrow').click(function(){
+        scmd(
+            'initiative',
+            ['next',$('#'+currentCtx).attr('mapId'),-1],
+            console.log
+        );
+        scmd(
+            'initiative',
+            ['check',$('#'+currentCtx).attr('mapId'),$('#'+currentCtx).attr('id')],
+            function(data){
+                $('#ci-img').attr('src',getIcon(data.current.icon));
+                $('#ni-img').attr('src',getIcon(data.next.icon));
+                $('#current-init').attr('data-tooltip',data.current.name);
+                $('#next-init').attr('data-tooltip',data.next.name);
+                console.log(data);
+            }
+        );
+    });
     $('#adv-stop').click(function(){
         scmd(
             'initiative',

@@ -28,6 +28,7 @@ with open(os.path.join('config','server.conf'),'r') as cfg:
 HELP_CONFIG = ConfigParser()
 with open(os.path.join('config','help_pages.conf'),'r') as cfg:
     HELP_CONFIG.read_file(cfg)
+HELP_CONFIG.optionxform = str
 
 
 # options
@@ -345,9 +346,11 @@ def check_all():
         if last_help_update + 5 < time.time():
             load_docs()
             nHELP_CONFIG = ConfigParser()
+            nHELP_CONFIG.optionxform = str
             with open(os.path.join('config','help_pages.conf'),'r') as cfg:
                 nHELP_CONFIG.read_file(cfg)
             HELP_CONFIG = nHELP_CONFIG
+            HELP_CONFIG.optionxform = str
             last_help_update = time.time()
                 
 
