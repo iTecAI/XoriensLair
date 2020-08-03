@@ -19,7 +19,6 @@ import d20
 from configparser import ConfigParser
 from session import *
 import markdown2
-from bs4 import BeautifulSoup
 
 CONFIG = ConfigParser()
 with open(os.path.join('config','server.conf'),'r') as cfg:
